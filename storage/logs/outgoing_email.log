@@ -1,0 +1,7 @@
+[2026-04-08 18:23:20] MAIL_ERROR | TO=yewint@gmail.com | SUBJECT=Your bus booking MBTB-20260408-542F11 is confirmed | ERROR=SMTP Error: Could not authenticate.
+[2026-04-09 01:16:25] MAIL_ERROR | TO=yewint@gmail.com | SUBJECT=Refund request received for MBTB-20260408-542F11 | ERROR=SMTP Error: Could not authenticate.
+[2026-04-09 01:16:28] MAIL_ERROR | TO=admin@mbtb.local | SUBJECT=New refund request RFD-20260409-D059B7 for MBTB-20260408-542F11 | ERROR=SMTP Error: Could not authenticate.
+[2026-04-09 01:17:46] MAIL_ERROR | TO=yewint@gmail.com | SUBJECT=Refund approved for MBTB-20260408-542F11 | ERROR=SMTP Error: Could not authenticate.
+[2026-04-09 01:19:46] MAIL_ERROR | TO=yemyatkyaw6227@gmail.com | SUBJECT=Your bus booking MBTB-20260403-E0CF88 is confirmed | ERROR=SMTP Error: Could not authenticate.
+[2026-04-09 17:19:03] MAIL_SENT=1 | TO=yellwintzaw2300@gmail.com | SUBJECT=Your bus booking MBTB-20260409-E80207 is confirmed
+[2026-04-09 17:53:50] MAIL_SENT=1 | TO=yellwintzaw23002@gmail.com | SUBJECT=Your bus booking MBTB-20260409-0BB8F4 is confirmed
