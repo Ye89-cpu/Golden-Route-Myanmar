@@ -1,0 +1,16 @@
+
+storage/logs/*
+uploads/payment_proofs/*
+uploads/tickets/*
+uploads/qr_codes/*
+uploads/vouchers/*
+uploads/voucher_qr/*
+uploads/profile_images/*
+
+!storage/logs/.gitkeep
+!uploads/payment_proofs/.gitkeep
+!uploads/tickets/.gitkeep
+!uploads/qr_codes/.gitkeep
+!uploads/vouchers/.gitkeep
+!uploads/voucher_qr/.gitkeep
+!uploads/profile_images/.gitkeep
