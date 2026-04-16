@@ -28,7 +28,7 @@ $packages = [];
 try {
     $packages = fetch_public_tour_packages($conn);
 } catch (Throwable $e) {
-    $packages = [];
+    die('Tour load error: ' . $e->getMessage());
 }
 $conn->close();
 

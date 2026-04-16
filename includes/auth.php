@@ -64,12 +64,13 @@ function login_user($user)
     session_regenerate_id(true);
 
     $_SESSION['user'] = [
-        'id'    => (int)$user['id'],
-        'name'  => $user['name'],
-        'email' => $user['email'],
-        'phone' => $user['phone'],
-        'role'  => $user['role'],
-        'status'=> $user['status']
+        'id'            => (int)$user['id'],
+        'name'          => $user['name'],
+        'email'         => $user['email'],
+        'phone'         => $user['phone'],
+        'role'          => $user['role'],
+        'status'        => $user['status'],
+        'profile_image' => $user['profile_image'] ?? null,
     ];
 }
 
@@ -143,7 +144,7 @@ function redirect_by_role($role = null)
             redirect('tour_admin/dashboard.php');
             break;
         case 'customer':
-            redirect('customer/profile.php');
+            redirect('account/profile.php');
             break;
         default:
             redirect('index.php');

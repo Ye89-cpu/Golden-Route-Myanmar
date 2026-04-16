@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 09, 2026 at 10:34 PM
+-- Generation Time: Apr 16, 2026 at 02:48 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -203,7 +203,24 @@ INSERT INTO `audit_logs` (`id`, `user_id`, `action`, `entity_type`, `entity_id`,
 (33, 7, 'booking_created', 'booking', 8, 'Created bus booking: MBTB-20260409-5B1AB4', '::1', '2026-04-09 11:16:24'),
 (34, 8, 'booking_created', 'booking', 9, 'Created bus booking: MBTB-20260409-0BB8F4', '::1', '2026-04-09 11:18:51'),
 (35, 1, 'ticket_generated', 'ticket', 5, 'Generated ticket TKT-20260409-4EE627 for booking MBTB-20260409-0BB8F4', '::1', '2026-04-09 11:23:44'),
-(36, 1, 'company_created', 'company', 5, 'Created company: Shwe Mandalar Express', '::1', '2026-04-09 11:32:31');
+(36, 1, 'company_created', 'company', 5, 'Created company: Shwe Mandalar Express', '::1', '2026-04-09 11:32:31'),
+(37, 8, 'booking_created', 'booking', 10, 'Created bus booking: MBTB-20260410-946DA2', '::1', '2026-04-09 21:12:20'),
+(38, 8, 'payment_submitted', 'payment', 6, 'Submitted payment for booking: MBTB-20260410-946DA2', '::1', '2026-04-09 21:12:33'),
+(39, 1, 'ticket_generated', 'ticket', 6, 'Generated ticket TKT-20260410-CEA8A1 for booking MBTB-20260410-946DA2', '::1', '2026-04-09 21:13:54'),
+(40, 8, 'booking_created', 'booking', 11, 'Created bus booking: GRM-20260410-917BDF', '::1', '2026-04-10 08:27:13'),
+(41, 8, 'payment_submitted', 'payment', 7, 'Submitted payment for booking: GRM-20260410-917BDF', '::1', '2026-04-10 08:28:10'),
+(42, 1, 'ticket_generated', 'ticket', 7, 'Generated ticket TKT-20260410-9AD485 for booking GRM-20260410-917BDF', '::1', '2026-04-10 08:28:17'),
+(43, 8, 'booking_created', 'booking', 12, 'Created bus booking: GRM-20260410-2CFCBB', '::1', '2026-04-10 09:14:35'),
+(44, 8, 'booking_created', 'booking', 13, 'Created bus booking: GRM-20260412-A1828A', '::1', '2026-04-12 09:03:33'),
+(45, 8, 'payment_submitted', 'payment', 8, 'Submitted payment for booking: GRM-20260412-A1828A', '::1', '2026-04-12 09:03:55'),
+(46, 1, 'ticket_generated', 'ticket', 8, 'Generated ticket TKT-20260412-17E4C0 for booking GRM-20260412-A1828A', '::1', '2026-04-12 09:04:55'),
+(47, 8, 'refund_requested', 'refund_request', 9, 'Customer submitted refund request RFD-20260412-1D97E0 for booking GRM-20260412-A1828A', '::1', '2026-04-12 09:07:46'),
+(48, 1, 'refund_approved', 'refund_request', 9, 'Approved refund request RFD-20260412-1D97E0 for booking GRM-20260412-A1828A', '::1', '2026-04-12 09:08:09'),
+(49, 1, 'system_settings_updated', 'system_settings', NULL, 'Updated system settings', '::1', '2026-04-13 15:20:31'),
+(50, 8, 'tour_booking_created', 'booking', 14, 'Created tour booking: GRM-20260414-3345DD', '::1', '2026-04-14 10:11:18'),
+(51, 8, 'payment_submitted', 'payment', 9, 'Submitted payment for booking: GRM-20260414-3345DD', '::1', '2026-04-14 10:11:39'),
+(52, 1, 'voucher_generated', 'voucher', 1, 'Generated voucher VCH-20260414-9D08DA for booking GRM-20260414-3345DD', '::1', '2026-04-14 10:12:15'),
+(53, 8, 'tour_booking_created', 'booking', 15, 'Created tour booking: GRM-20260414-A58801', '::1', '2026-04-14 10:12:56');
 
 -- --------------------------------------------------------
 
@@ -261,7 +278,13 @@ INSERT INTO `bookings` (`id`, `booking_code`, `user_id`, `booking_type`, `trip_i
 (6, 'MBTB-20260409-8EC03C', 7, 'bus', 9, NULL, 1, 4000000.00, 'pending', 'unpaid', 'ewewedfd', '2026-04-09 17:40:38', '2026-04-09 11:10:38', '2026-04-09 11:10:38'),
 (7, 'MBTB-20260409-16403F', 7, 'bus', 9, NULL, 1, 4000000.00, 'pending', 'unpaid', 'eref', '2026-04-09 17:41:26', '2026-04-09 11:11:26', '2026-04-09 11:11:26'),
 (8, 'MBTB-20260409-5B1AB4', 7, 'bus', 9, NULL, 1, 4000000.00, 'pending', 'unpaid', 'wew dsf', '2026-04-09 17:46:24', '2026-04-09 11:16:24', '2026-04-09 11:16:24'),
-(9, 'MBTB-20260409-0BB8F4', 8, 'bus', 9, NULL, 1, 4000000.00, 'paid', 'paid', 'dds', '2026-04-09 17:48:51', '2026-04-09 11:18:51', '2026-04-09 11:23:44');
+(9, 'MBTB-20260409-0BB8F4', 8, 'bus', 9, NULL, 1, 4000000.00, 'paid', 'paid', 'dds', '2026-04-09 17:48:51', '2026-04-09 11:18:51', '2026-04-09 11:23:44'),
+(10, 'MBTB-20260410-946DA2', 8, 'bus', 706, NULL, 1, 17000.00, 'paid', 'paid', 'dewe', '2026-04-10 03:42:20', '2026-04-09 21:12:20', '2026-04-09 21:13:54'),
+(11, 'GRM-20260410-917BDF', 8, 'bus', 16, NULL, 1, 4000000.00, 'paid', 'paid', 'yytyt', '2026-04-10 14:57:13', '2026-04-10 08:27:13', '2026-04-10 08:28:17'),
+(12, 'GRM-20260410-2CFCBB', 8, 'bus', 9, NULL, 1, 4000000.00, 'pending', 'unpaid', '22', '2026-04-10 15:44:35', '2026-04-10 09:14:35', '2026-04-10 09:14:35'),
+(13, 'GRM-20260412-A1828A', 8, 'bus', 730, NULL, 1, 17000.00, 'cancelled', 'refunded', 'hbh\nRefund approved via request RFD-20260412-1D97E0 on 2026-04-12 15:38:09', '2026-04-12 15:33:33', '2026-04-12 09:03:33', '2026-04-12 09:08:09'),
+(14, 'GRM-20260414-3345DD', 8, 'tour', NULL, 43, 17, 4505000.00, 'paid', 'paid', '', '2026-04-14 16:41:18', '2026-04-14 10:11:18', '2026-04-14 10:12:15'),
+(15, 'GRM-20260414-A58801', 8, 'tour', NULL, 31, 3, 285000.00, 'pending', 'unpaid', 'df', '2026-04-14 16:42:56', '2026-04-14 10:12:56', '2026-04-14 10:12:56');
 
 -- --------------------------------------------------------
 
@@ -295,7 +318,31 @@ INSERT INTO `booking_passengers` (`id`, `booking_id`, `full_name`, `phone`, `nrc
 (6, 6, 'ye wint zaw', '09762007221', '222222', 'male', 44, 'dee', '2026-04-09 11:10:38', '2026-04-09 11:10:38'),
 (7, 7, 'ye wint zaw', '09762007221', '222222', 'female', 33, 'dee', '2026-04-09 11:11:26', '2026-04-09 11:11:26'),
 (8, 8, 'ye wint zaw', '09762007221', '222222', 'male', 22, 'dee', '2026-04-09 11:16:24', '2026-04-09 11:16:24'),
-(9, 9, 'ye wint zaw', '09762007221', '222222', 'male', 33, 'dee', '2026-04-09 11:18:51', '2026-04-09 11:18:51');
+(9, 9, 'ye wint zaw', '09762007221', '222222', 'male', 33, 'dee', '2026-04-09 11:18:51', '2026-04-09 11:18:51'),
+(10, 10, 'ye wint zaw', '09762007221', '222222', 'male', 22, 'dee', '2026-04-09 21:12:20', '2026-04-09 21:12:20'),
+(11, 11, 'ye wint zaw', '09762007221', '222222', 'male', 60, 'dee', '2026-04-10 08:27:13', '2026-04-10 08:27:13'),
+(12, 12, 'ye wint zaw', '09762007221', '222222', 'male', 22, 'dee', '2026-04-10 09:14:35', '2026-04-10 09:14:35'),
+(13, 13, 'ye Myat Kyaw', '073264234723', '777777', 'male', 22, 'gjhv', '2026-04-12 09:03:33', '2026-04-12 09:03:33'),
+(14, 14, 'Ymk', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(15, 14, 'fdsf', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(16, 14, 'df', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(17, 14, 'dfs', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(18, 14, 'df', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(19, 14, 'sd', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(20, 14, 'fsd', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(21, 14, 'f', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(22, 14, 'sdf', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(23, 14, 'sd', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(24, 14, 'fds', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(25, 14, 'f', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(26, 14, 'ds', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(27, 14, 'fds', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(28, 14, 'f', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(29, 14, 'sdf', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(30, 14, 'dsf', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:11:18', '2026-04-14 10:11:18'),
+(31, 15, 'rer', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:12:56', '2026-04-14 10:12:56'),
+(32, 15, 'fd', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:12:56', '2026-04-14 10:12:56'),
+(33, 15, 'ssf', NULL, NULL, NULL, NULL, NULL, '2026-04-14 10:12:56', '2026-04-14 10:12:56');
 
 -- --------------------------------------------------------
 
@@ -326,7 +373,11 @@ INSERT INTO `booking_seats` (`id`, `booking_id`, `trip_id`, `bus_seat_id`, `seat
 (6, 6, 9, 49, '3C', 4000000.00, '2026-04-09 11:10:38'),
 (7, 7, 9, 53, '5A', 4000000.00, '2026-04-09 11:11:26'),
 (8, 8, 9, 45, '2B', 4000000.00, '2026-04-09 11:16:24'),
-(9, 9, 9, 48, '3B', 4000000.00, '2026-04-09 11:18:51');
+(9, 9, 9, 48, '3B', 4000000.00, '2026-04-09 11:18:51'),
+(10, 10, 706, 534, '9C', 17000.00, '2026-04-09 21:12:20'),
+(11, 11, 16, 56, '6A', 4000000.00, '2026-04-10 08:27:13'),
+(12, 12, 9, 51, '4B', 4000000.00, '2026-04-10 09:14:35'),
+(13, 13, 730, 514, '4C', 17000.00, '2026-04-12 09:03:33');
 
 -- --------------------------------------------------------
 
@@ -850,14 +901,14 @@ INSERT INTO `companies` (`id`, `name`, `company_type`, `license`, `phone`, `emai
 (2, 'Golden Pagoda Tours', 'tour_operator', 'LIC-TOUR-001', '09222222222', 'hello@goldenpagoda.com', 'Mandalay', NULL, NULL, 'approved', '2026-04-03 18:05:01', '2026-04-03 11:34:18', '2026-04-03 11:35:01'),
 (3, 'Myanmar Star Travel', 'both', 'LIC-BOTH-001', '09333333333', 'contact@mmstar.com', 'Naypyidaw', NULL, NULL, 'approved', '2026-04-08 18:28:34', '2026-04-03 11:34:18', '2026-04-08 11:58:34'),
 (4, 'Shwe Mandalar Express', 'bus_company', 'LIC-BUS-101', '09123456789', 'bus@example.com', 'Yangon', NULL, NULL, 'approved', '2026-04-03 18:14:13', '2026-04-03 11:44:13', '2026-04-03 11:44:13'),
-(5, 'Shwe Mandalar Express', 'bus_company', 'MM-BUS-2024-001', '+959771234567', 'shwemandalar@gmail.com', 'No.123, Pyay Road, Yangon, Myanmar', 'Premium intercity bus service providing daily routes between Yangon, Mandalay, and Naypyidaw.', NULL, 'approved', '2026-04-09 18:02:31', '2026-04-09 11:32:31', '2026-04-09 11:32:31'),
-(6, 'Ayar Highway Express', 'bus_company', 'LIC-BUS-AYAR-001', '09420000001', 'ayar@demo.com', 'Yangon', 'Daily intercity bus operator for Yangon-Mandalay-Bagan-Taunggyi routes.', NULL, 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
-(7, 'Royal Lotus Coaches', 'bus_company', 'LIC-BUS-ROYAL-001', '09420000007', 'royalbus@demo.com', 'Mandalay', 'Premium VIP and normal coach service for upper Myanmar routes.', NULL, 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
+(5, 'Shwe Mandalar Express', 'bus_company', 'MM-BUS-2024-001', '+959771234567', 'shwemandalar@gmail.com', 'No.123, Pyay Road, Yangon, Myanmar', 'Premium intercity bus service providing daily routes between Yangon, Mandalay, and Naypyidaw.', 'assets/images/logo.png', 'approved', '2026-04-09 18:02:31', '2026-04-09 11:32:31', '2026-04-14 11:35:20'),
+(6, 'Ayar Highway Express', 'bus_company', 'LIC-BUS-AYAR-001', '09420000001', 'ayar@demo.com', 'Yangon', 'Daily intercity bus operator for Yangon-Mandalay-Bagan-Taunggyi routes.', 'assets/images/bus.png', 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-14 11:35:20'),
+(7, 'Royal Lotus Coaches', 'bus_company', 'LIC-BUS-ROYAL-001', '09420000007', 'royalbus@demo.com', 'Mandalay', 'Premium VIP and normal coach service for upper Myanmar routes.', 'assets/images/bus.png', 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-14 11:35:20'),
 (8, 'Lotus Paradise Tours', 'tour_operator', 'LIC-TOUR-LOTUS-001', '09420000002', 'lotus@demo.com', 'Mandalay', 'Inbound and domestic cultural tour packages.', NULL, 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
 (9, 'Heritage Horizon Travels', 'tour_operator', 'LIC-TOUR-HERITAGE-001', '09420000008', 'heritage@demo.com', 'Yangon', 'Curated culture, city and nature tour packages.', NULL, 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
-(10, 'Myanmar Explorer Group', 'both', 'LIC-BOTH-EXPLORER-001', '09420000009', 'explorer@demo.com', 'Naypyidaw', 'Combined bus and tour operator for presentation demo.', NULL, 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
-(11, 'Royal Lotus Bus Lines', 'bus_company', 'LIC-BUS-LOTUS-002', '09420000011', 'royallotusbus@demo.com', 'Mandalay', 'Comfort bus services across central Myanmar.', NULL, 'approved', '2026-04-09 18:59:49', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(12, 'Sunrise Delta Express', 'bus_company', 'LIC-BUS-DELTA-003', '09420000021', 'sunrisedelta@demo.com', 'Pathein', 'Regional and long-distance routes from the delta region.', NULL, 'approved', '2026-04-09 18:59:49', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(10, 'Myanmar Explorer Group', 'both', 'LIC-BOTH-EXPLORER-001', '09420000009', 'explorer@demo.com', 'Naypyidaw', 'Combined bus and tour operator for presentation demo.', 'assets/images/logo.png', 'approved', '2026-04-09 18:36:46', '2026-04-09 12:06:46', '2026-04-14 11:35:20'),
+(11, 'Royal Lotus Bus Lines', 'bus_company', 'LIC-BUS-LOTUS-002', '09420000011', 'royallotusbus@demo.com', 'Mandalay', 'Comfort bus services across central Myanmar.', 'assets/images/bus.png', 'approved', '2026-04-09 18:59:49', '2026-04-09 12:29:49', '2026-04-14 11:35:20'),
+(12, 'Sunrise Delta Express', 'bus_company', 'LIC-BUS-DELTA-003', '09420000021', 'sunrisedelta@demo.com', 'Pathein', 'Regional and long-distance routes from the delta region.', 'assets/images/bus.png', 'approved', '2026-04-09 18:59:49', '2026-04-09 12:29:49', '2026-04-14 11:35:20'),
 (13, 'Golden Land Holidays', 'tour_operator', 'LIC-TOUR-GOLD-002', '09420000012', 'goldenlandtour@demo.com', 'Yangon', 'City tours, culture, and lake experiences.', NULL, 'approved', '2026-04-09 18:59:49', '2026-04-09 12:29:49', '2026-04-09 12:29:49');
 
 -- --------------------------------------------------------
@@ -993,6 +1044,35 @@ INSERT INTO `email_templates` (`id`, `code`, `name`, `subject_template`, `body_t
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `events`
+--
+
+CREATE TABLE `events` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `event_type` varchar(100) NOT NULL DEFAULT 'Promotion',
+  `description` text DEFAULT NULL,
+  `event_date` date DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
+  `image_path` varchar(255) DEFAULT NULL,
+  `status` enum('active','draft','expired') NOT NULL DEFAULT 'draft',
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `show_in_slider` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `events`
+--
+
+INSERT INTO `events` (`id`, `title`, `event_type`, `description`, `event_date`, `location`, `image_path`, `status`, `created_by`, `created_at`, `updated_at`, `show_in_slider`) VALUES
+(1, 'Thingyan Holiday Promotion', 'Promotion', 'Special holiday travel promotion for bus and tour customers.', '2026-04-15', 'Yangon', NULL, 'active', 1, '2026-04-13 16:00:20', '2026-04-13 16:00:20', 1),
+(2, 'Summer Tour Campaign', 'Tour Event', 'Promote summer tour packages on homepage and dashboard.', '2026-05-02', 'Bagan', NULL, 'active', 1, '2026-04-13 16:00:20', '2026-04-14 08:09:11', 1);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `notifications`
 --
 
@@ -1022,7 +1102,14 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link_
 (4, 6, 'success', 'Refund approved', 'Your refund request RFD-20260409-D059B7 has been approved.', 'http://localhost/myanmar_bus_tour_booking/customer/refund_request.php?booking_id=3', 'refund_request', 8, 0, NULL, 1, '2026-04-08 18:47:43'),
 (5, 2, 'success', 'Bus ticket confirmed', 'Your booking MBTB-20260403-E0CF88 has been verified. Ticket No: TKT-20260409-6D3266', 'http://localhost/myanmar_bus_tour_booking/customer/ticket.php?booking_id=2', 'booking', 2, 0, NULL, 1, '2026-04-08 18:49:44'),
 (6, 7, 'success', 'Bus ticket confirmed', 'Your booking MBTB-20260409-E80207 has been verified. Ticket No: TKT-20260409-A03CF6', 'http://localhost/myanmar_bus_tour_booking/customer/ticket.php?booking_id=4', 'booking', 4, 0, NULL, 1, '2026-04-09 10:48:59'),
-(7, 8, 'success', 'Bus ticket confirmed', 'Your booking MBTB-20260409-0BB8F4 has been verified. Ticket No: TKT-20260409-4EE627', 'http://localhost/myanmar_bus_tour_booking/customer/ticket.php?booking_id=9', 'booking', 9, 0, NULL, 1, '2026-04-09 11:23:44');
+(7, 8, 'success', 'Bus ticket confirmed', 'Your booking MBTB-20260409-0BB8F4 has been verified. Ticket No: TKT-20260409-4EE627', 'http://localhost/myanmar_bus_tour_booking/customer/ticket.php?booking_id=9', 'booking', 9, 0, NULL, 1, '2026-04-09 11:23:44'),
+(8, 8, 'success', 'Bus ticket confirmed', 'Your booking MBTB-20260410-946DA2 has been verified. Ticket No: TKT-20260410-CEA8A1', 'http://localhost/Golden_Route_Myanmar/customer/ticket.php?booking_id=10', 'booking', 10, 0, NULL, 1, '2026-04-09 21:13:54'),
+(9, 8, 'success', 'Bus ticket confirmed', 'Your booking GRM-20260410-917BDF has been verified. Ticket No: TKT-20260410-9AD485', 'http://localhost/Golden_Route_Myanmar/customer/ticket.php?booking_id=11', 'booking', 11, 0, NULL, 1, '2026-04-10 08:28:17'),
+(10, 8, 'success', 'Bus ticket confirmed', 'Your booking GRM-20260412-A1828A has been verified. Ticket No: TKT-20260412-17E4C0', 'http://localhost/Golden_Route_Myanmar/customer/ticket.php?booking_id=13', 'booking', 13, 1, '2026-04-12 15:35:26', 1, '2026-04-12 09:04:55'),
+(11, 8, 'warning', 'Refund request submitted', 'Your refund request RFD-20260412-1D97E0 is pending review.', 'http://localhost/Golden_Route_Myanmar/customer/refund_request.php?booking_id=13', 'refund_request', 9, 0, NULL, 8, '2026-04-12 09:07:38'),
+(12, 1, 'warning', 'New refund request', 'Request RFD-20260412-1D97E0 was submitted for booking GRM-20260412-A1828A', 'http://localhost/Golden_Route_Myanmar/admin/refund_requests.php', 'refund_request', 9, 0, NULL, 8, '2026-04-12 09:07:38'),
+(13, 8, 'success', 'Refund approved', 'Your refund request RFD-20260412-1D97E0 has been approved.', 'http://localhost/Golden_Route_Myanmar/customer/refund_request.php?booking_id=13', 'refund_request', 9, 0, NULL, 1, '2026-04-12 09:08:09'),
+(14, 8, 'success', 'Tour voucher confirmed', 'Your booking GRM-20260414-3345DD has been verified. Voucher Code: VCH-20260414-9D08DA', 'http://localhost/Golden_Route_Myanmar/customer/voucher.php?booking_id=14', 'booking', 14, 0, NULL, 1, '2026-04-14 10:12:15');
 
 -- --------------------------------------------------------
 
@@ -1055,7 +1142,11 @@ INSERT INTO `payments` (`id`, `booking_id`, `amount`, `payment_method`, `transac
 (2, 2, 4000000.00, 'wave_money', 'retdffdgeere ewrew', 'uploads/payment_proofs/payment_2_1775328111_992b7c42.png', 'yu', 'verified', 1, '2026-04-09 01:19:44', NULL, '2026-04-04 18:41:51', '2026-04-08 18:49:44'),
 (3, 3, 4000000.00, 'kbzpay', 'retdffdgeere ewrew', 'uploads/payment_proofs/payment_3_1775649026_00fd27a5.png', 'ghcvbgb fgfg', 'verified', 1, '2026-04-08 18:23:17', 'Refund approved for booking MBTB-20260408-542F11 via request RFD-20260409-D059B7', '2026-04-08 11:50:26', '2026-04-08 18:47:43'),
 (4, 4, 4000000.00, 'kbzpay', 'retdffdgeere ewrew', 'uploads/payment_proofs/payment_4_1775731721_3d37a3fe.png', 'weqweqw', 'verified', 1, '2026-04-09 17:18:59', NULL, '2026-04-09 10:48:41', '2026-04-09 10:48:59'),
-(5, 9, 4000000.00, 'kbzpay', 'retdffdgeere ewrew', 'uploads/payment_proofs/payment_9_1775733601_24b61c6d.png', 'wewqew', 'verified', 1, '2026-04-09 17:53:44', NULL, '2026-04-09 11:20:01', '2026-04-09 11:23:44');
+(5, 9, 4000000.00, 'kbzpay', 'retdffdgeere ewrew', 'uploads/payment_proofs/payment_9_1775733601_24b61c6d.png', 'wewqew', 'verified', 1, '2026-04-09 17:53:44', NULL, '2026-04-09 11:20:01', '2026-04-09 11:23:44'),
+(6, 10, 17000.00, 'wave_money', 'retdffdgeere ewrew', 'uploads/payment_proofs/payment_10_1775769153_7943ddde.png', 'ewewe', 'verified', 1, '2026-04-10 03:43:54', NULL, '2026-04-09 21:12:33', '2026-04-09 21:13:54'),
+(7, 11, 4000000.00, 'wave_money', '22', 'uploads/payment_proofs/payment_11_1775809690_10ffa2a6.png', 'sadasd', 'verified', 1, '2026-04-10 14:58:17', NULL, '2026-04-10 08:28:10', '2026-04-10 08:28:17'),
+(8, 13, 17000.00, 'kbzpay', 'hbhbhb', 'uploads/payment_proofs/payment_13_1775984635_f0243d14.png', 'gvgvv', 'verified', 1, '2026-04-12 15:34:55', 'Refund approved for booking GRM-20260412-A1828A via request RFD-20260412-1D97E0', '2026-04-12 09:03:55', '2026-04-12 09:08:09'),
+(9, 14, 4505000.00, 'wave_money', '20yt54534535435435', 'uploads/payment_proofs/payment_14_1776161499_7d6b993f.webp', 'fhghgfhfg', 'verified', 1, '2026-04-14 16:42:15', NULL, '2026-04-14 10:11:39', '2026-04-14 10:12:15');
 
 -- --------------------------------------------------------
 
@@ -1104,7 +1195,8 @@ CREATE TABLE `refund_requests` (
 --
 
 INSERT INTO `refund_requests` (`id`, `booking_id`, `user_id`, `request_code`, `booking_type`, `reason`, `requested_amount`, `status`, `admin_note`, `processed_by`, `processed_at`, `created_at`, `updated_at`) VALUES
-(8, 3, 6, 'RFD-20260409-D059B7', 'bus', 'ffc ghv jh hj', 4000000.00, 'approved', '', 1, '2026-04-09 01:17:43', '2026-04-08 18:46:23', '2026-04-08 18:47:43');
+(8, 3, 6, 'RFD-20260409-D059B7', 'bus', 'ffc ghv jh hj', 4000000.00, 'approved', '', 1, '2026-04-09 01:17:43', '2026-04-08 18:46:23', '2026-04-08 18:47:43'),
+(9, 13, 8, 'RFD-20260412-1D97E0', 'bus', 'fggxfg', 17000.00, 'approved', '', 1, '2026-04-12 15:38:09', '2026-04-12 09:07:38', '2026-04-12 09:08:09');
 
 -- --------------------------------------------------------
 
@@ -1237,7 +1329,7 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`id`, `setting_key`, `setting_value`, `value_type`, `description`, `is_public`, `created_at`, `updated_at`) VALUES
-(1, 'app_name', 'Myanmar Bus & Tour Booking', 'string', 'Application display name', 1, '2026-04-05 16:30:25', '2026-04-08 09:20:59'),
+(1, 'app_name', 'Golden Route Myanmar', 'string', 'Application display name', 1, '2026-04-05 16:30:25', '2026-04-13 15:20:31'),
 (2, 'support_email', 'support@example.com', 'string', 'Support email address', 1, '2026-04-05 16:30:25', '2026-04-08 09:20:59'),
 (3, 'support_phone', '09999999999', 'string', 'Support phone number', 1, '2026-04-05 16:30:25', '2026-04-08 09:20:59'),
 (4, 'default_currency', 'MMK', 'string', 'Default currency label', 1, '2026-04-05 16:30:25', '2026-04-05 16:30:25'),
@@ -1246,7 +1338,7 @@ INSERT INTO `system_settings` (`id`, `setting_key`, `setting_value`, `value_type
 (7, 'maintenance_message', 'System is under maintenance. Please try again later.', 'text', 'Maintenance page message', 1, '2026-04-05 16:30:25', '2026-04-05 16:30:25'),
 (8, 'registration_enabled', '1', 'bool', 'Allow customer registration', 0, '2026-04-05 16:30:25', '2026-04-08 09:20:59'),
 (9, 'email_enabled', '1', 'bool', 'Enable email sending logic', 0, '2026-04-05 16:30:25', '2026-04-08 09:20:59'),
-(10, 'ticket_qr_required', '1', 'bool', 'Require QR/token validation for boarding/check-in', 0, '2026-04-05 16:30:25', '2026-04-05 16:30:25');
+(10, 'ticket_qr_required', '1', 'bool', 'Require QR/token validation', 0, '2026-04-05 16:30:25', '2026-04-13 15:20:31');
 
 -- --------------------------------------------------------
 
@@ -1277,7 +1369,10 @@ INSERT INTO `tickets` (`id`, `booking_id`, `trip_id`, `ticket_no`, `qr_token`, `
 (2, 3, 7, 'TKT-20260408-6DA2AC', '5d4fb97632300bb5565077d84e42b3d293252c1b97892b81556e9e2a0558efb5', 'uploads/qr_codes/TKT-20260408-6DA2AC.png', 'uploads/tickets/TKT-20260408-6DA2AC.pdf', 'cancelled', NULL, '2026-04-08 11:53:17', '2026-04-08 18:47:43'),
 (3, 2, 14, 'TKT-20260409-6D3266', '807f8c271b968a7571b7dd3c37acdbc1d59991dbbd4b01c374135172240ff49d', 'uploads/qr_codes/TKT-20260409-6D3266.png', 'uploads/tickets/TKT-20260409-6D3266.pdf', 'valid', NULL, '2026-04-08 18:49:44', '2026-04-08 18:49:44'),
 (4, 4, 8, 'TKT-20260409-A03CF6', '5492c1c1dcf45d916cdff955244eb95d98220c10211ed721e95119665bff13fd', 'uploads/qr_codes/TKT-20260409-A03CF6.png', 'uploads/tickets/TKT-20260409-A03CF6.pdf', 'valid', NULL, '2026-04-09 10:48:59', '2026-04-09 10:48:59'),
-(5, 9, 9, 'TKT-20260409-4EE627', '3dbe4d1a6412d000eaadbc51feb518f10d1acd100d5d3feae7f44bbc0a9ea857', 'uploads/qr_codes/TKT-20260409-4EE627.png', 'uploads/tickets/TKT-20260409-4EE627.pdf', 'valid', NULL, '2026-04-09 11:23:44', '2026-04-09 11:23:44');
+(5, 9, 9, 'TKT-20260409-4EE627', '3dbe4d1a6412d000eaadbc51feb518f10d1acd100d5d3feae7f44bbc0a9ea857', 'uploads/qr_codes/TKT-20260409-4EE627.png', 'uploads/tickets/TKT-20260409-4EE627.pdf', 'valid', NULL, '2026-04-09 11:23:44', '2026-04-09 11:23:44'),
+(6, 10, 706, 'TKT-20260410-CEA8A1', 'f025c171b406236c8d39b63c6a4de3a6eb0ff7c38d7cb31229baed8a8ee25a44', 'uploads/qr_codes/TKT-20260410-CEA8A1.png', 'uploads/tickets/TKT-20260410-CEA8A1.pdf', 'valid', NULL, '2026-04-09 21:13:54', '2026-04-09 21:13:54'),
+(7, 11, 16, 'TKT-20260410-9AD485', '36327bdff5361aab6407c40daf21b9d6091898f8d40da2d773f812659731f5a4', 'uploads/qr_codes/TKT-20260410-9AD485.png', 'uploads/tickets/TKT-20260410-9AD485.pdf', 'valid', NULL, '2026-04-10 08:28:17', '2026-04-10 08:28:17'),
+(8, 13, 730, 'TKT-20260412-17E4C0', '75fc74aa9324f29ac8aac9e3d0c79919481b602b51772f98c8e0804adab4a817', 'uploads/qr_codes/TKT-20260412-17E4C0.png', 'uploads/tickets/TKT-20260412-17E4C0.pdf', 'cancelled', NULL, '2026-04-12 09:04:55', '2026-04-12 09:08:09');
 
 -- --------------------------------------------------------
 
@@ -1334,7 +1429,7 @@ INSERT INTO `tour_batches` (`id`, `company_id`, `tour_package_id`, `start_date`,
 (28, 10, 7, '2026-05-07', '2026-05-07', 20, 0, 110000.00, 'open', '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
 (29, 13, 8, '2026-04-11', '2026-04-11', 25, 0, 95000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (30, 13, 8, '2026-04-18', '2026-04-18', 25, 0, 95000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(31, 13, 8, '2026-04-25', '2026-04-25', 25, 0, 95000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(31, 13, 8, '2026-04-25', '2026-04-25', 25, 3, 95000.00, 'open', '2026-04-09 12:29:49', '2026-04-14 10:12:56'),
 (32, 13, 8, '2026-05-02', '2026-05-02', 25, 0, 95000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (33, 13, 9, '2026-04-12', '2026-04-13', 18, 0, 165000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (34, 13, 9, '2026-04-19', '2026-04-20', 18, 0, 165000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
@@ -1346,7 +1441,7 @@ INSERT INTO `tour_batches` (`id`, `company_id`, `tour_package_id`, `start_date`,
 (40, 10, 10, '2026-05-05', '2026-05-06', 15, 0, 198000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (41, 10, 11, '2026-04-15', '2026-04-17', 20, 0, 265000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (42, 10, 11, '2026-04-22', '2026-04-24', 20, 0, 265000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(43, 10, 11, '2026-04-29', '2026-05-01', 20, 0, 265000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(43, 10, 11, '2026-04-29', '2026-05-01', 20, 17, 265000.00, 'open', '2026-04-09 12:29:49', '2026-04-14 10:11:18'),
 (44, 10, 11, '2026-05-06', '2026-05-08', 20, 0, 265000.00, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49');
 
 -- --------------------------------------------------------
@@ -1426,14 +1521,14 @@ INSERT INTO `trips` (`id`, `company_id`, `route_id`, `bus_id`, `schedule_templat
 (6, 1, 2, 1, 1, '2026-04-08', '2026-04-08 09:50:00', '2026-04-08 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (7, 1, 2, 1, 1, '2026-04-09', '2026-04-09 09:50:00', '2026-04-09 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-08 18:47:43'),
 (8, 1, 2, 1, 1, '2026-04-10', '2026-04-10 09:50:00', '2026-04-10 09:51:00', 4000000.00, 18, 'open', '2026-04-03 14:21:04', '2026-04-09 10:45:42'),
-(9, 1, 2, 1, 1, '2026-04-11', '2026-04-11 09:50:00', '2026-04-11 09:51:00', 4000000.00, 14, 'open', '2026-04-03 14:21:04', '2026-04-09 11:18:51'),
+(9, 1, 2, 1, 1, '2026-04-11', '2026-04-11 09:50:00', '2026-04-11 09:51:00', 4000000.00, 13, 'open', '2026-04-03 14:21:04', '2026-04-10 09:14:35'),
 (10, 1, 2, 1, 1, '2026-04-12', '2026-04-12 09:50:00', '2026-04-12 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (11, 1, 2, 1, 1, '2026-04-13', '2026-04-13 09:50:00', '2026-04-13 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (12, 1, 2, 1, 1, '2026-04-14', '2026-04-14 09:50:00', '2026-04-14 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (13, 1, 2, 1, 1, '2026-04-15', '2026-04-15 09:50:00', '2026-04-15 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (14, 1, 2, 1, 1, '2026-04-16', '2026-04-16 09:50:00', '2026-04-16 09:51:00', 4000000.00, 17, 'open', '2026-04-03 14:21:04', '2026-04-03 14:52:04'),
 (15, 1, 2, 1, 1, '2026-04-17', '2026-04-17 09:50:00', '2026-04-17 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
-(16, 1, 2, 1, 1, '2026-04-18', '2026-04-18 09:50:00', '2026-04-18 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
+(16, 1, 2, 1, 1, '2026-04-18', '2026-04-18 09:50:00', '2026-04-18 09:51:00', 4000000.00, 18, 'open', '2026-04-03 14:21:04', '2026-04-10 08:27:13'),
 (17, 1, 2, 1, 1, '2026-04-19', '2026-04-19 09:50:00', '2026-04-19 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (18, 1, 2, 1, 1, '2026-04-20', '2026-04-20 09:50:00', '2026-04-20 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
 (19, 1, 2, 1, 1, '2026-04-21', '2026-04-21 09:50:00', '2026-04-21 09:51:00', 4000000.00, 19, 'open', '2026-04-03 14:21:04', '2026-04-03 14:21:04'),
@@ -1883,7 +1978,7 @@ INSERT INTO `trips` (`id`, `company_id`, `route_id`, `bus_id`, `schedule_templat
 (703, 11, 20, 10, 18, '2026-04-11', '2026-04-11 07:00:00', '2026-04-11 09:30:00', 13000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (704, 11, 21, 10, 19, '2026-04-11', '2026-04-11 17:00:00', '2026-04-11 19:30:00', 13000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (705, 12, 22, 11, 20, '2026-04-11', '2026-04-11 06:30:00', '2026-04-11 10:30:00', 17000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(706, 12, 23, 11, 21, '2026-04-11', '2026-04-11 15:00:00', '2026-04-11 19:00:00', 17000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(706, 12, 23, 11, 21, '2026-04-11', '2026-04-11 15:00:00', '2026-04-11 19:00:00', 17000.00, 39, 'open', '2026-04-09 12:29:49', '2026-04-09 21:12:20'),
 (707, 12, 24, 11, 22, '2026-04-11', '2026-04-11 21:00:00', '2026-04-12 04:00:00', 26000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (708, 12, 25, 11, 23, '2026-04-11', '2026-04-11 08:00:00', '2026-04-11 15:00:00', 26000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (709, 10, 26, 12, 24, '2026-04-11', '2026-04-11 07:00:00', '2026-04-11 14:00:00', 28000.00, 24, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
@@ -1907,7 +2002,7 @@ INSERT INTO `trips` (`id`, `company_id`, `route_id`, `bus_id`, `schedule_templat
 (727, 11, 20, 10, 18, '2026-04-13', '2026-04-13 07:00:00', '2026-04-13 09:30:00', 13000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (728, 11, 21, 10, 19, '2026-04-13', '2026-04-13 17:00:00', '2026-04-13 19:30:00', 13000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (729, 12, 22, 11, 20, '2026-04-13', '2026-04-13 06:30:00', '2026-04-13 10:30:00', 17000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(730, 12, 23, 11, 21, '2026-04-13', '2026-04-13 15:00:00', '2026-04-13 19:00:00', 17000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(730, 12, 23, 11, 21, '2026-04-13', '2026-04-13 15:00:00', '2026-04-13 19:00:00', 17000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-12 09:08:09'),
 (731, 12, 24, 11, 22, '2026-04-13', '2026-04-13 21:00:00', '2026-04-14 04:00:00', 26000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (732, 12, 25, 11, 23, '2026-04-13', '2026-04-13 08:00:00', '2026-04-13 15:00:00', 26000.00, 40, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
 (733, 10, 26, 12, 24, '2026-04-13', '2026-04-13 07:00:00', '2026-04-13 14:00:00', 28000.00, 24, 'open', '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
@@ -2239,6 +2334,7 @@ CREATE TABLE `users` (
   `name` varchar(120) NOT NULL,
   `email` varchar(150) NOT NULL,
   `phone` varchar(30) DEFAULT NULL,
+  `profile_image` varchar(255) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('super_admin','bus_admin','tour_admin','customer') NOT NULL DEFAULT 'customer',
   `status` enum('active','inactive','suspended') NOT NULL DEFAULT 'active',
@@ -2253,23 +2349,23 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `email`, `phone`, `password`, `role`, `status`, `email_verified_at`, `last_login_at`, `remember_token`, `created_at`, `updated_at`) VALUES
-(1, 'Super Admin', 'admin@mbtb.local', '09999999999', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'super_admin', 'active', NULL, '2026-04-09 18:05:00', NULL, '2026-04-03 08:12:38', '2026-04-09 12:06:46'),
-(2, 'Ye Myat Kyaw', 'yemyatkyaw6227@gmail.com', '09762007221', '$2y$10$62s8xTk0Ie.ubX38YCETaeW5D4iPv/VBJA4A9xNO15vV89QmhuyaC', 'customer', 'active', NULL, '2026-04-06 02:06:13', NULL, '2026-04-03 08:19:55', '2026-04-05 19:36:13'),
-(3, 'Bus Admin', 'busadmin@example.com', '09987654321', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', NULL, '2026-04-09 17:16:12', NULL, '2026-04-03 11:44:13', '2026-04-09 12:06:46'),
-(5, 'Tour Admin', 'touradmin@example.com', '09988877766', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', NULL, NULL, NULL, '2026-04-08 09:20:59', '2026-04-09 12:06:46'),
-(6, 'Ye wint Zaw', 'yewint@gmail.com', '09777633627', '$2y$10$7r7fKFHvFeK9FMJleXPHu.PSG7hctjBt/as1VFAxCeoku43FvTaHy', 'customer', 'active', NULL, '2026-04-08 18:17:19', NULL, '2026-04-08 11:46:57', '2026-04-08 11:47:19'),
-(7, 'Kyaw Gyi', 'yellwintzaw2300@gmail.com', '0976663234', '$2y$10$guX/8en8IqhjLTTRhG60Z.qTcNcbI7Cgp/zQi.97kzFaV6Q.KV5f.', 'customer', 'active', NULL, '2026-04-09 17:18:27', NULL, '2026-04-09 10:44:43', '2026-04-09 10:48:27'),
-(8, 'Ye wint Zaw', 'yellwintzaw23002@gmail.com', '0982736482', '$2y$10$H.Rlqs7PWCNfI.XpLlJWkeSGJQRkbmJerQsO5rLhFYcOtyJRrgFxu', 'customer', 'active', NULL, '2026-04-09 18:42:06', NULL, '2026-04-09 11:17:52', '2026-04-09 12:12:06'),
-(9, 'Shwe Mandalar Express Admin', 'admin@shwemandalar.com', '+959771234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', NULL, '2026-04-09 18:02:52', NULL, '2026-04-09 11:32:31', '2026-04-09 12:06:46'),
-(10, 'Ayar Bus Admin', 'ayarbusadmin@demo.com', '09420000003', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:36:46', '2026-04-09 18:41:21', NULL, '2026-04-09 12:06:46', '2026-04-09 12:11:21'),
-(11, 'Lotus Tour Admin', 'lotustouradmin@demo.com', '09420000004', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:36:46', NULL, NULL, '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
-(12, 'Royal Bus Admin', 'royalbusadmin@demo.com', '09420000005', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:36:46', NULL, NULL, '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
-(13, 'Heritage Tour Admin', 'heritagetouradmin@demo.com', '09420000006', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:36:46', NULL, NULL, '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
-(14, 'Royal Lotus Bus Admin', 'lotusbusadmin@demo.com', '09420000013', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(15, 'Delta Bus Admin', 'deltabusadmin@demo.com', '09420000023', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(16, 'Golden Land Tour Admin', 'goldentouradmin@demo.com', '09420000014', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
-(17, 'Explorer Admin', 'exploreradmin@demo.com', '09420000032', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49');
+INSERT INTO `users` (`id`, `name`, `email`, `phone`, `profile_image`, `password`, `role`, `status`, `email_verified_at`, `last_login_at`, `remember_token`, `created_at`, `updated_at`) VALUES
+(1, 'Super Admin', 'admin@mbtb.local', '09999999999', 'uploads/profile_images/profile_1_20260414161115_75a0f9f1.png', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'super_admin', 'active', NULL, '2026-04-14 16:10:22', NULL, '2026-04-03 08:12:38', '2026-04-14 09:41:15'),
+(2, 'Ye Myat Kyaw', 'yemyatkyaw6227@gmail.com', '09762007221', NULL, '$2y$10$62s8xTk0Ie.ubX38YCETaeW5D4iPv/VBJA4A9xNO15vV89QmhuyaC', 'customer', 'active', NULL, '2026-04-06 02:06:13', NULL, '2026-04-03 08:19:55', '2026-04-05 19:36:13'),
+(3, 'Bus Admin', 'busadmin@example.com', '09987654321', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', NULL, '2026-04-09 17:16:12', NULL, '2026-04-03 11:44:13', '2026-04-09 12:06:46'),
+(5, 'Tour Admin', 'touradmin@example.com', '09988877766', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', NULL, NULL, NULL, '2026-04-08 09:20:59', '2026-04-09 12:06:46'),
+(6, 'Ye wint Zaw', 'yewint@gmail.com', '09777633627', NULL, '$2y$10$7r7fKFHvFeK9FMJleXPHu.PSG7hctjBt/as1VFAxCeoku43FvTaHy', 'customer', 'active', NULL, '2026-04-08 18:17:19', NULL, '2026-04-08 11:46:57', '2026-04-08 11:47:19'),
+(7, 'Kyaw Gyi', 'yellwintzaw2300@gmail.com', '0976663234', NULL, '$2y$10$guX/8en8IqhjLTTRhG60Z.qTcNcbI7Cgp/zQi.97kzFaV6Q.KV5f.', 'customer', 'active', NULL, '2026-04-09 17:18:27', NULL, '2026-04-09 10:44:43', '2026-04-09 10:48:27'),
+(8, 'Ye wint Zaw', 'yellwintzaw23002@gmail.com', '0982736482', 'uploads/profile_images/profile_8_20260414160948_f347b6e7.webp', '$2y$10$H.Rlqs7PWCNfI.XpLlJWkeSGJQRkbmJerQsO5rLhFYcOtyJRrgFxu', 'customer', 'active', NULL, '2026-04-14 19:00:21', NULL, '2026-04-09 11:17:52', '2026-04-14 12:30:21'),
+(9, 'Shwe Mandalar Express Admin', 'admin@shwemandalar.com', '+959771234567', 'uploads/profile_images/profile_9_20260414183427_385a32c8.png', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', NULL, '2026-04-14 18:34:16', NULL, '2026-04-09 11:32:31', '2026-04-14 12:04:27'),
+(10, 'Ayar Bus Admin', 'ayarbusadmin@demo.com', '09420000003', 'uploads/profile_images/profile_10_20260414183505_4876bc7a.png', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:36:46', '2026-04-14 18:34:58', NULL, '2026-04-09 12:06:46', '2026-04-14 12:05:05'),
+(11, 'Lotus Tour Admin', 'lotustouradmin@demo.com', '09420000004', 'uploads/profile_images/profile_11_20260414183532_8bcc37f6.png', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:36:46', '2026-04-14 18:35:25', NULL, '2026-04-09 12:06:46', '2026-04-14 12:05:32'),
+(12, 'Royal Bus Admin', 'royalbusadmin@demo.com', '09420000005', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:36:46', NULL, NULL, '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
+(13, 'Heritage Tour Admin', 'heritagetouradmin@demo.com', '09420000006', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:36:46', NULL, NULL, '2026-04-09 12:06:46', '2026-04-09 12:06:46'),
+(14, 'Royal Lotus Bus Admin', 'lotusbusadmin@demo.com', '09420000013', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(15, 'Delta Bus Admin', 'deltabusadmin@demo.com', '09420000023', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'bus_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(16, 'Golden Land Tour Admin', 'goldentouradmin@demo.com', '09420000014', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49'),
+(17, 'Explorer Admin', 'exploreradmin@demo.com', '09420000032', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tour_admin', 'active', '2026-04-09 18:59:49', NULL, NULL, '2026-04-09 12:29:49', '2026-04-09 12:29:49');
 
 -- --------------------------------------------------------
 
@@ -2290,6 +2386,13 @@ CREATE TABLE `vouchers` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `vouchers`
+--
+
+INSERT INTO `vouchers` (`id`, `booking_id`, `tour_batch_id`, `voucher_code`, `qr_token`, `qr_image`, `pdf_file`, `status`, `used_at`, `created_at`, `updated_at`) VALUES
+(1, 14, 43, 'VCH-20260414-9D08DA', '2f5e3ad02bb97ceef31f127fee5d15ee15865ce1e8bec73fd7264be00a17389e', 'uploads/voucher_qr/VCH-20260414-9D08DA.png', 'uploads/vouchers/VCH-20260414-9D08DA.pdf', 'valid', NULL, '2026-04-14 10:12:15', '2026-04-14 10:12:15');
 
 --
 -- Indexes for dumped tables
@@ -2402,6 +2505,15 @@ ALTER TABLE `email_templates`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_email_templates_code` (`code`),
   ADD KEY `idx_email_templates_status` (`status`);
+
+--
+-- Indexes for table `events`
+--
+ALTER TABLE `events`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_events_status` (`status`),
+  ADD KEY `idx_events_event_date` (`event_date`),
+  ADD KEY `idx_events_created_by` (`created_by`);
 
 --
 -- Indexes for table `notifications`
@@ -2542,7 +2654,7 @@ ALTER TABLE `vouchers`
 -- AUTO_INCREMENT for table `audit_logs`
 --
 ALTER TABLE `audit_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `banners`
@@ -2554,19 +2666,19 @@ ALTER TABLE `banners`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `booking_passengers`
 --
 ALTER TABLE `booking_passengers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `booking_seats`
 --
 ALTER TABLE `booking_seats`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `buses`
@@ -2611,16 +2723,22 @@ ALTER TABLE `email_templates`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
+-- AUTO_INCREMENT for table `events`
+--
+ALTER TABLE `events`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `promotions`
@@ -2632,7 +2750,7 @@ ALTER TABLE `promotions`
 -- AUTO_INCREMENT for table `refund_requests`
 --
 ALTER TABLE `refund_requests`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `routes`
@@ -2650,13 +2768,13 @@ ALTER TABLE `schedule_templates`
 -- AUTO_INCREMENT for table `system_settings`
 --
 ALTER TABLE `system_settings`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `tour_batches`
@@ -2686,7 +2804,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `vouchers`
 --
 ALTER TABLE `vouchers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Constraints for dumped tables

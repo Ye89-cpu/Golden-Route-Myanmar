@@ -132,7 +132,8 @@ function count_current_available_seats(array $seats): int
 function generate_unique_booking_code(mysqli $conn): string
 {
     do {
-        $code = 'MBTB-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $prefix = defined('BOOKING_CODE_PREFIX') ? BOOKING_CODE_PREFIX : 'GRM';
+        $code = $prefix . '-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
         $sql = "SELECT id FROM bookings WHERE booking_code = ? LIMIT 1";
         $stmt = $conn->prepare($sql);

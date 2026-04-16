@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/db.php';
 
-$page_title = 'Search Bus - Myanmar Bus & Tour Booking';
+$page_title = 'Search Bus - Golden Route Myanmar';
 
 $conn = getDBConnection();
 
@@ -10,6 +10,14 @@ function is_valid_date_ymd(string $date): bool
 {
     $dt = DateTime::createFromFormat('Y-m-d', $date);
     return $dt && $dt->format('Y-m-d') === $date;
+}
+
+function normalize_city_name(string $name): string
+{
+    $name = html_entity_decode($name, ENT_QUOTES, 'UTF-8');
+    $name = trim($name);
+    $name = preg_replace('/\s+/', ' ', $name);
+    return mb_strtolower($name, 'UTF-8');
 }
 
 $cities = [];
@@ -23,14 +31,62 @@ $cityStmt = $conn->prepare($citySql);
 $cityStmt->execute();
 $cityResult = $cityStmt->get_result();
 
+$cityNameMap = [];
+
 while ($row = $cityResult->fetch_assoc()) {
     $cities[] = $row;
+    $cityNameMap[normalize_city_name((string)$row['name'])] = (int)$row['id'];
 }
 $cityStmt->close();
 
+$selectedCompanyId = (int)($_GET['company_id'] ?? 0);
+$selectedCompany = null;
+
+if ($selectedCompanyId > 0) {
+    $companySql = "
+        SELECT id, name, company_type, status, logo
+        FROM companies
+        WHERE id = ?
+          AND status = 'approved'
+          AND company_type IN ('bus_company', 'both')
+        LIMIT 1
+    ";
+
+    $companyStmt = $conn->prepare($companySql);
+    if ($companyStmt) {
+        $companyStmt->bind_param('i', $selectedCompanyId);
+        $companyStmt->execute();
+        $companyResult = $companyStmt->get_result();
+        $selectedCompany = $companyResult ? $companyResult->fetch_assoc() : null;
+        $companyStmt->close();
+    }
+
+    if (!$selectedCompany) {
+        $selectedCompanyId = 0;
+    }
+}
+
 $fromCityId = (int)($_GET['from_city_id'] ?? 0);
 $toCityId = (int)($_GET['to_city_id'] ?? 0);
-$travelDate = trim($_GET['travel_date'] ?? '');
+$travelDate = trim((string)($_GET['travel_date'] ?? ''));
+
+$fromName = trim((string)($_GET['from'] ?? ''));
+$toName = trim((string)($_GET['to'] ?? ''));
+
+if ($fromCityId <= 0 && $fromName !== '') {
+    $normalizedFrom = normalize_city_name($fromName);
+    if (isset($cityNameMap[$normalizedFrom])) {
+        $fromCityId = $cityNameMap[$normalizedFrom];
+    }
+}
+
+if ($toCityId <= 0 && $toName !== '') {
+    $normalizedTo = normalize_city_name($toName);
+    if (isset($cityNameMap[$normalizedTo])) {
+        $toCityId = $cityNameMap[$normalizedTo];
+    }
+}
+
 $isSubmitted = isset($_GET['search']) && $_GET['search'] === '1';
 
 $formError = null;
@@ -44,40 +100,83 @@ if ($isSubmitted) {
     } elseif (!is_valid_date_ymd($travelDate)) {
         $formError = 'Invalid travel date format.';
     } else {
-        $searchSql = "
-            SELECT
-                t.id AS trip_id,
-                t.trip_date,
-                t.departure_datetime,
-                t.arrival_datetime,
-                t.price,
-                t.available_seats,
-                t.status AS trip_status,
-                c.name AS company_name,
-                b.bus_number,
-                b.bus_type,
-                b.layout_type,
-                r.distance_km,
-                r.duration_minutes,
-                fc.name AS from_city_name,
-                tc.name AS to_city_name
-            FROM trips t
-            INNER JOIN companies c ON c.id = t.company_id
-            INNER JOIN routes r ON r.id = t.route_id
-            INNER JOIN buses b ON b.id = t.bus_id
-            INNER JOIN cities fc ON fc.id = r.from_city_id
-            INNER JOIN cities tc ON tc.id = r.to_city_id
-            WHERE t.trip_date = ?
-              AND r.from_city_id = ?
-              AND r.to_city_id = ?
-              AND t.status = 'open'
-              AND c.status = 'approved'
-              AND r.status = 'active'
-              AND b.status = 'active'
-            ORDER BY t.departure_datetime ASC, t.price ASC
-        ";
-        $searchStmt = $conn->prepare($searchSql);
-        $searchStmt->bind_param('sii', $travelDate, $fromCityId, $toCityId);
+        if ($selectedCompanyId > 0) {
+            $searchSql = "
+                SELECT
+                    t.id AS trip_id,
+                    t.trip_date,
+                    t.departure_datetime,
+                    t.arrival_datetime,
+                    t.price,
+                    t.available_seats,
+                    t.status AS trip_status,
+                    c.id AS company_id,
+                    c.name AS company_name,
+                    b.bus_number,
+                    b.bus_type,
+                    b.layout_type,
+                    r.distance_km,
+                    r.duration_minutes,
+                    fc.name AS from_city_name,
+                    tc.name AS to_city_name
+                FROM trips t
+                INNER JOIN companies c ON c.id = t.company_id
+                INNER JOIN routes r ON r.id = t.route_id
+                INNER JOIN buses b ON b.id = t.bus_id
+                INNER JOIN cities fc ON fc.id = r.from_city_id
+                INNER JOIN cities tc ON tc.id = r.to_city_id
+                WHERE t.trip_date = ?
+                  AND r.from_city_id = ?
+                  AND r.to_city_id = ?
+                  AND t.company_id = ?
+                  AND t.status = 'open'
+                  AND c.status = 'approved'
+                  AND r.status = 'active'
+                  AND b.status = 'active'
+                ORDER BY t.departure_datetime ASC, t.price ASC
+            ";
+
+            $searchStmt = $conn->prepare($searchSql);
+            $searchStmt->bind_param('siii', $travelDate, $fromCityId, $toCityId, $selectedCompanyId);
+        } else {
+            $searchSql = "
+                SELECT
+                    t.id AS trip_id,
+                    t.trip_date,
+                    t.departure_datetime,
+                    t.arrival_datetime,
+                    t.price,
+                    t.available_seats,
+                    t.status AS trip_status,
+                    c.id AS company_id,
+                    c.name AS company_name,
+                    b.bus_number,
+                    b.bus_type,
+                    b.layout_type,
+                    r.distance_km,
+                    r.duration_minutes,
+                    fc.name AS from_city_name,
+                    tc.name AS to_city_name
+                FROM trips t
+                INNER JOIN companies c ON c.id = t.company_id
+                INNER JOIN routes r ON r.id = t.route_id
+                INNER JOIN buses b ON b.id = t.bus_id
+                INNER JOIN cities fc ON fc.id = r.from_city_id
+                INNER JOIN cities tc ON tc.id = r.to_city_id
+                WHERE t.trip_date = ?
+                  AND r.from_city_id = ?
+                  AND r.to_city_id = ?
+                  AND t.status = 'open'
+                  AND c.status = 'approved'
+                  AND r.status = 'active'
+                  AND b.status = 'active'
+                ORDER BY t.departure_datetime ASC, t.price ASC
+            ";
+
+            $searchStmt = $conn->prepare($searchSql);
+            $searchStmt->bind_param('sii', $travelDate, $fromCityId, $toCityId);
+        }
+
         $searchStmt->execute();
         $searchResult = $searchStmt->get_result();
 
@@ -110,13 +209,34 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="search-benefit-item">Live available seats</div>
                         <div class="search-benefit-item">Clear VIP / sleeper / normal labels</div>
                     </div>
+
+                    <?php if ($selectedCompany): ?>
+                        <div class="mt-4 p-3 rounded-4 border bg-white shadow-sm">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div>
+                                    <div class="small text-muted mb-1">Selected Company</div>
+                                    <strong><?php echo e($selectedCompany['name']); ?></strong>
+                                    <div class="small text-muted mt-1">
+                                        Your search results will show only this bus company.
+                                    </div>
+                                </div>
+                                <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn btn-outline-secondary btn-sm">
+                                    Clear company filter
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <div class="col-lg-6">
                 <div class="search-form-card h-100">
-                    <form method="GET" action="<?php echo BASE_URL; ?>search_bus.php">
+                    <form id="busSearchForm" method="GET" action="<?php echo BASE_URL; ?>search_bus.php">
                         <input type="hidden" name="search" value="1">
+
+                        <?php if ($selectedCompanyId > 0): ?>
+                            <input type="hidden" name="company_id" value="<?php echo e((string)$selectedCompanyId); ?>">
+                        <?php endif; ?>
 
                         <div class="row g-3">
                             <div class="col-12">
@@ -149,10 +269,18 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
 
                             <div class="col-12">
-                                <button type="submit" class="btn btn-brand w-100">Search Buses</button>
+                                <button type="submit" class="btn btn-brand w-100">
+                                    <?php echo $selectedCompany ? 'Search ' . e($selectedCompany['name']) . ' Trips' : 'Search Buses'; ?>
+                                </button>
                             </div>
                         </div>
                     </form>
+
+                    <?php if (!$isSubmitted && ($selectedCompanyId > 0 || $fromCityId > 0 || $toCityId > 0)): ?>
+                        <div class="mt-3 small text-muted">
+                            Route and company have been prefilled from the selected slider card.
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -170,6 +298,9 @@ require_once __DIR__ . '/includes/header.php';
                 <h3 class="mb-1">Search Results</h3>
                 <p class="mb-0 text-muted">
                     Found <?php echo count($results); ?> trip(s) for <?php echo e($travelDate); ?>
+                    <?php if ($selectedCompany): ?>
+                        from <strong><?php echo e($selectedCompany['name']); ?></strong>
+                    <?php endif; ?>
                 </p>
             </div>
         </div>
@@ -177,7 +308,13 @@ require_once __DIR__ . '/includes/header.php';
         <?php if (empty($results)): ?>
             <div class="empty-state-card">
                 <h3>No trips found</h3>
-                <p>Try another date or route combination.</p>
+                <p>
+                    <?php if ($selectedCompany): ?>
+                        No trips found for <?php echo e($selectedCompany['name']); ?> on this route and date.
+                    <?php else: ?>
+                        Try another date or route combination.
+                    <?php endif; ?>
+                </p>
             </div>
         <?php else: ?>
             <div class="row g-4">
@@ -261,8 +398,14 @@ require_once __DIR__ . '/includes/header.php';
         <?php endif; ?>
     <?php else: ?>
         <div class="empty-state-card">
-            <h3>Search available bus trips</h3>
-            <p>Use the form above to search by route and date.</p>
+            <h3><?php echo $selectedCompany ? 'Search available trips for ' . e($selectedCompany['name']) : 'Search available bus trips'; ?></h3>
+            <p>
+                <?php if ($selectedCompany): ?>
+                    Use the form above to search routes and dates for this selected bus company.
+                <?php else: ?>
+                    Use the form above to search by route and date.
+                <?php endif; ?>
+            </p>
         </div>
     <?php endif; ?>
 </div>
