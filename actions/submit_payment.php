@@ -9,39 +9,31 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('customer/bookings.php');
 }
 
-if (!function_exists('submit_payment_redirect')) {
-    function submit_payment_redirect(int $bookingId): void
-    {
-        redirect('payment.php?booking_id=' . $bookingId);
-    }
+function submit_payment_redirect(int $bookingId): void
+{
+    redirect('payment.php?booking_id=' . $bookingId);
 }
 
-if (!function_exists('submit_payment_store_old_input')) {
-    function submit_payment_store_old_input(array $input): void
-    {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            @session_start();
-        }
-        $_SESSION['old_input'] = $input;
+function submit_payment_store_old_input(array $input): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
     }
+    $_SESSION['old_input'] = $input;
 }
 
-if (!function_exists('submit_payment_clear_old_input')) {
-    function submit_payment_clear_old_input(): void
-    {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            @session_start();
-        }
-        unset($_SESSION['old_input']);
+function submit_payment_clear_old_input(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
     }
+    unset($_SESSION['old_input']);
 }
 
-if (!function_exists('submit_payment_safe_file_name')) {
-    function submit_payment_safe_file_name(string $name): string
-    {
-        $name = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
-        return trim((string)$name, '_');
-    }
+function submit_payment_safe_file_name(string $name): string
+{
+    $name = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
+    return trim((string)$name, '_');
 }
 
 $currentUserId = (int) current_user_id();
@@ -128,7 +120,10 @@ try {
     */
     $screenshotPath = null;
 
-    if (isset($_FILES['payment_screenshot']) && (int)($_FILES['payment_screenshot']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+    if (
+        isset($_FILES['payment_screenshot']) &&
+        (int)($_FILES['payment_screenshot']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE
+    ) {
         $file = $_FILES['payment_screenshot'];
 
         $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
@@ -141,7 +136,7 @@ try {
             throw new Exception('Invalid uploaded screenshot file.');
         }
 
-        $maxBytes = 5 * 1024 * 1024; // 5MB
+        $maxBytes = 5 * 1024 * 1024;
         $fileSize = (int)($file['size'] ?? 0);
         if ($fileSize <= 0 || $fileSize > $maxBytes) {
             throw new Exception('Screenshot must be smaller than 5MB.');
@@ -173,8 +168,8 @@ try {
 
         $baseName = 'payment_' . $bookingId . '_' . time() . '_' . bin2hex(random_bytes(4));
         $safeName = submit_payment_safe_file_name($baseName) . '.' . $extension;
-
         $destinationFs = $uploadDirFs . '/' . $safeName;
+
         if (!move_uploaded_file($tmpPath, $destinationFs)) {
             throw new Exception('Failed to save uploaded screenshot.');
         }
@@ -290,7 +285,7 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | Non-blocking payment submitted notification / email
+    | Non-blocking payment notification / email
     |--------------------------------------------------------------------------
     */
     try {

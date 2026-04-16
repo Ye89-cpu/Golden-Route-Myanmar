@@ -182,6 +182,16 @@ $conn->close();
                         </div>
                     </div>
 
+<div class="col-md-6">
+                        <label class="form-label">Admin Name (optional)</label>
+                        <input type="text" name="admin_name" class="form-control" placeholder="Example: Ayar Bus Admin">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Admin Phone (optional)</label>
+                        <input type="text" name="admin_phone" class="form-control" placeholder="Example: 09xxxxxxxxx">
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Admin Email (optional)</label>
                         <input type="email" name="admin_email" class="form-control">
@@ -191,7 +201,6 @@ $conn->close();
                         <label class="form-label">Admin Password (optional)</label>
                         <input type="text" name="admin_password" class="form-control" placeholder="Leave blank for auto-generated password">
                     </div>
-
                     <div class="col-12">
                         <button type="submit" class="btn btn-primary">Create Company</button>
                     </div>

@@ -3,12 +3,24 @@ require_once __DIR__ . '/db.php';
 
 function tour_booking_table_column_exists(mysqli $conn, string $table, string $column): bool
 {
-    $sql = "SHOW COLUMNS FROM `{$table}` LIKE ?";
+    $sql = "
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+        LIMIT 1
+    ";
+
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('s', $column);
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('ss', $table, $column);
     $stmt->execute();
     $result = $stmt->get_result();
-    $exists = $result->num_rows > 0;
+    $exists = $result && $result->num_rows > 0;
     $stmt->close();
 
     return $exists;
@@ -35,6 +47,7 @@ function fetch_tour_package_for_company(mysqli $conn, int $packageId, int $compa
         WHERE id = ? AND company_id = ?
         LIMIT 1
     ";
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('ii', $packageId, $companyId);
     $stmt->execute();
@@ -55,6 +68,7 @@ function fetch_tour_batch_for_package(mysqli $conn, int $batchId, int $packageId
         WHERE id = ? AND {$packageColumn} = ?
         LIMIT 1
     ";
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('ii', $batchId, $packageId);
     $stmt->execute();
@@ -75,6 +89,7 @@ function fetch_tour_batches_for_package(mysqli $conn, int $packageId): array
         WHERE {$packageColumn} = ?
         ORDER BY start_date ASC, id DESC
     ";
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $packageId);
     $stmt->execute();
@@ -101,14 +116,14 @@ function fetch_public_tour_packages(mysqli $conn): array
                 SELECT COUNT(*)
                 FROM tour_batches tb
                 WHERE tb.{$packageColumn} = tp.id
-                  AND tb.status IN ('open', 'active', 'full')
+                  AND tb.status IN ('open', 'full', 'active')
                   AND tb.end_date >= CURDATE()
             ) AS total_batches,
             (
                 SELECT MIN(tb.price)
                 FROM tour_batches tb
                 WHERE tb.{$packageColumn} = tp.id
-                  AND tb.status IN ('open', 'active', 'full')
+                  AND tb.status IN ('open', 'full', 'active')
                   AND tb.end_date >= CURDATE()
             ) AS min_batch_price
         FROM tour_packages tp
@@ -120,6 +135,10 @@ function fetch_public_tour_packages(mysqli $conn): array
     ";
 
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception('Failed to prepare tour packages query: ' . $conn->error);
+    }
+
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -145,6 +164,7 @@ function fetch_public_tour_package_detail(mysqli $conn, int $packageId): ?array
           AND c.company_type IN ('tour_operator', 'both')
         LIMIT 1
     ";
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $packageId);
     $stmt->execute();
@@ -163,10 +183,11 @@ function fetch_public_available_batches(mysqli $conn, int $packageId): array
         SELECT *
         FROM tour_batches
         WHERE {$packageColumn} = ?
-          AND status IN ('open', 'active', 'full')
+          AND status IN ('open', 'full', 'active')
           AND end_date >= CURDATE()
         ORDER BY start_date ASC, id ASC
     ";
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $packageId);
     $stmt->execute();

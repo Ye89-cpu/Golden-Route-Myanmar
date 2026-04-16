@@ -78,7 +78,9 @@ if (!function_exists('mbtb_detect_base_url')) {
     }
 }
 
-define('APP_NAME', (string) mbtb_env('MBTB_APP_NAME', 'Myanmar Bus & Tour Booking'));
+define('APP_NAME', (string) mbtb_env('MBTB_APP_NAME', 'Golden Route Myanmar'));
+define('APP_SHORT_NAME', (string) mbtb_env('MBTB_APP_SHORT_NAME', 'GRM'));
+define('BOOKING_CODE_PREFIX', (string) mbtb_env('MBTB_BOOKING_PREFIX', 'GRM'));
 define('BASE_URL', mbtb_detect_base_url());
 
 define('DB_HOST', (string) mbtb_env('DB_HOST', 'localhost'));

@@ -42,7 +42,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <form action="<?php echo BASE_URL; ?>actions/save_system_settings.php" method="POST">
                         <div class="mb-3">
                             <label class="form-label">App Name</label>
-                            <input type="text" name="app_name" class="form-control" value="<?php echo e($settings['app_name'] ?? 'Myanmar Bus & Tour Booking'); ?>" required>
+                            <input type="text" name="app_name" class="form-control" value="<?php echo e($settings['app_name'] ?? 'Golden Route Myanmar'); ?>" required>
                         </div>
 
                         <div class="row g-3">

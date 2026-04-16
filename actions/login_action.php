@@ -27,7 +27,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     redirect('login.php');
 }
 
-$sql = "SELECT id, name, email, phone, password, role, status FROM users WHERE email = ? LIMIT 1";
+$sql = "SELECT id, name, email, phone, password, role, status, profile_image FROM users WHERE email = ? LIMIT 1";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('s', $email);
 $stmt->execute();
@@ -56,7 +56,6 @@ if ($user['status'] !== 'active') {
     redirect('login.php');
 }
 
-// update last login
 $updateSql = "UPDATE users SET last_login_at = NOW() WHERE id = ?";
 $updateStmt = $conn->prepare($updateSql);
 $updateStmt->bind_param('i', $user['id']);

@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/booking_helper.php';
 require_once __DIR__ . '/includes/seat_layout_helper.php';
 
-$page_title = 'Checkout - Myanmar Bus & Tour Booking';
+$page_title = 'Checkout - Golden Route Myanmar';
 
 $conn = getDBConnection();
 

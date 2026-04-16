@@ -7,7 +7,7 @@ require_once __DIR__ . '/../includes/customer_history_helper.php';
 
 require_role('customer');
 
-$page_title = 'My Bookings - Myanmar Bus & Tour Booking';
+$page_title = 'My Bookings - Golden Route Myanmar';
 
 $conn = getDBConnection();
 $currentUserId = (int)current_user_id();

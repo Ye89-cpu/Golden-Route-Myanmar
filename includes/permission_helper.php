@@ -70,13 +70,52 @@ function ensure_unique_user_email(mysqli $conn, string $baseEmail): string
     }
 }
 
-function create_company_admin_account(mysqli $conn, array $company, ?string $customEmail = null, ?string $customPassword = null): ?array
+function ensure_unique_user_phone(mysqli $conn, string $basePhone): ?string
 {
+    $phone = trim($basePhone);
+    if ($phone === '') {
+        return null;
+    }
+
+    $candidate = $phone;
+    $counter = 1;
+
+    while (true) {
+        $sql = "SELECT id FROM users WHERE phone = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return $candidate;
+        }
+
+        $stmt->bind_param('s', $candidate);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return $candidate;
+        }
+
+        $candidate = $phone . $counter;
+        $counter++;
+    }
+}
+
+function create_company_admin_account(
+    mysqli $conn,
+    array $company,
+    ?string $customEmail = null,
+    ?string $customPassword = null,
+    ?string $customName = null,
+    ?string $customPhone = null
+): ?array {
     $companyId = (int)($company['id'] ?? 0);
     $companyType = trim((string)($company['company_type'] ?? 'bus_company'));
     $companyName = trim((string)($company['name'] ?? 'Company'));
     $companyPhone = trim((string)($company['phone'] ?? ''));
     $companyEmail = trim((string)($company['email'] ?? ''));
+    $adminName = trim((string)($customName ?? ''));
+    $adminPhone = trim((string)($customPhone ?? ''));
 
     if ($companyId <= 0) {
         return null;
@@ -97,7 +136,8 @@ function create_company_admin_account(mysqli $conn, array $company, ?string $cus
 
     $plainPassword = $customPassword ?: ('Admin@' . rand(1000, 9999));
     $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
-    $userName = $companyName . ' Admin';
+    $userName = $adminName !== '' ? $adminName : ($companyName . ' Admin');
+    $userPhone = ensure_unique_user_phone($conn, $adminPhone !== '' ? $adminPhone : $companyPhone);
 
     $userSql = "
         INSERT INTO users (name, email, phone, password, role, status, created_at, updated_at)
@@ -108,7 +148,7 @@ function create_company_admin_account(mysqli $conn, array $company, ?string $cus
         return null;
     }
 
-    $userStmt->bind_param('sssss', $userName, $email, $companyPhone, $hashedPassword, $role);
+    $userStmt->bind_param('sssss', $userName, $email, $userPhone, $hashedPassword, $role);
 
     if (!$userStmt->execute()) {
         $userStmt->close();

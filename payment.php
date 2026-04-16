@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/customer_history_helper.php';
 
 require_role('customer');
 
-$page_title = 'Payment Submission - Myanmar Bus & Tour Booking';
+$page_title = 'Payment Submission - Golden Route Myanmar';
 
 $conn = getDBConnection();
 

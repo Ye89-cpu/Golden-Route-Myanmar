@@ -1,6 +1,7 @@
 <?php
-// /opt/lampp/htdocs/myanmar_bus_tour_booking/customer/profile.php
-
+require_once __DIR__ . '/../includes/auth.php';
+require_login();
+redirect('account/profile.php');
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/customer_history_helper.php';

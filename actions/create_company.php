@@ -18,6 +18,8 @@ $address = trim($_POST['address'] ?? '');
 $description = trim($_POST['description'] ?? '');
 $status = trim($_POST['status'] ?? 'pending');
 $createAdminNow = isset($_POST['create_admin_now']) ? 1 : 0;
+$adminName = trim($_POST['admin_name'] ?? '');
+$adminPhone = trim($_POST['admin_phone'] ?? '');
 $adminEmail = trim($_POST['admin_email'] ?? '');
 $adminPassword = trim($_POST['admin_password'] ?? '');
 
@@ -88,7 +90,9 @@ try {
             $conn,
             $company,
             $adminEmail !== '' ? $adminEmail : null,
-            $adminPassword !== '' ? $adminPassword : null
+            $adminPassword !== '' ? $adminPassword : null,
+            $adminName !== '' ? $adminName : null,
+            $adminPhone !== '' ? $adminPhone : null
         );
 
         if (!$adminAccount) {

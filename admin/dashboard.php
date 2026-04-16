@@ -1,13 +1,16 @@
 <?php
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/event_helper.php';
 
 require_role('super_admin');
 
 $page_title = 'Super Admin Dashboard';
 
 $conn = getDBConnection();
+ensure_events_table_exists($conn);
 $user = current_user();
+$recentEvents = get_recent_events($conn, 5);
 
 $summary = [
     'total_companies' => 0,
@@ -66,6 +69,9 @@ try {
 } catch (Throwable $e) {
     // keep dashboard alive
 }
+
+$eventSummary = get_event_dashboard_summary($conn);
+$recentEvents = get_recent_events($conn, 4);
 
 $recentCompanies = [];
 $recentPayments = [];
@@ -145,13 +151,13 @@ function adminStatusBadgeClass(string $status): string
                 <h1 class="page-title mb-2">Dashboard overview</h1>
                 <p class="page-subtitle mb-0">
                     Welcome back, <?php echo e($user['name'] ?? 'Admin'); ?>.
-                    Review companies, payments, refunds, templates, system settings and audit activity from here.
+                    Review companies, payments, refunds, events, templates, system settings and audit activity from here.
                 </p>
             </div>
             <div class="col-lg-4">
                 <div class="d-grid gap-2">
                     <a href="<?php echo BASE_URL; ?>admin/companies.php" class="btn btn-brand">Manage Companies</a>
-                    <a href="<?php echo BASE_URL; ?>admin/reports.php" class="btn btn-nav-soft">Open Reports</a>
+                    <a href="<?php echo BASE_URL; ?>admin/events.php" class="btn btn-nav-soft">Open Events</a>
                 </div>
             </div>
         </div>
@@ -191,24 +197,63 @@ function adminStatusBadgeClass(string $status): string
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="panel-card h-100">
-                <div class="panel-card-header">
-                    <h4>Quick Actions</h4>
-                    <p>Open common admin modules quickly.</p>
+                <div class="panel-card-header quick-links-header">
+                    <div>
+                        <h4>Quick Actions</h4>
+                        <p>Open common admin modules quickly.</p>
+                    </div>
+                    <a href="<?php echo BASE_URL; ?>admin/events.php" class="btn btn-sm btn-brand">+ Add Event</a>
                 </div>
 
                 <div class="quick-link-grid">
-                    <a href="<?php echo BASE_URL; ?>admin/companies.php" class="quick-link-card">Companies</a>
-                    <a href="<?php echo BASE_URL; ?>admin/payments.php" class="quick-link-card">Payments</a>
-                    <a href="<?php echo BASE_URL; ?>admin/refund_requests.php" class="quick-link-card">Refund Requests</a>
-                    <a href="<?php echo BASE_URL; ?>admin/reports.php" class="quick-link-card">Reports</a>
-                    <a href="<?php echo BASE_URL; ?>admin/email_templates.php" class="quick-link-card">Email Templates</a>
-                    <a href="<?php echo BASE_URL; ?>admin/system_settings.php" class="quick-link-card">System Settings</a>
-                    <a href="<?php echo BASE_URL; ?>notifications.php" class="quick-link-card">Notifications</a>
-                    <a href="<?php echo BASE_URL; ?>admin/audit_logs.php" class="quick-link-card">Audit Logs</a>
-                    <a href="<?php echo BASE_URL; ?>admin/routes.php" class="quick-link-card">Manage Routes</a>
-                    <a href="<?php echo BASE_URL; ?>admin/schedules.php" class="quick-link-card">Manage Schedules</a>
-                    <a href="<?php echo BASE_URL; ?>admin/routes.php" class="quick-link-card">Manage All Routes</a>
-                    <a href="<?php echo BASE_URL; ?>admin/schedules.php" class="quick-link-card">Manage All Schedules</a>
+                    <a href="<?php echo BASE_URL; ?>admin/companies.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-buildings"></i></div>
+                        <div class="quick-link-content"><h4>Companies</h4><p>Manage registered companies</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/payments.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-credit-card-2-front"></i></div>
+                        <div class="quick-link-content"><h4>Payments</h4><p>Review payment submissions</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/refund_requests.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
+                        <div class="quick-link-content"><h4>Refund Requests</h4><p>Handle refund approvals</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/reports.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-bar-chart-line"></i></div>
+                        <div class="quick-link-content"><h4>Reports</h4><p>View business analytics</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/email_templates.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-envelope-paper"></i></div>
+                        <div class="quick-link-content"><h4>Email Templates</h4><p>Edit email layouts</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/system_settings.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-gear"></i></div>
+                        <div class="quick-link-content"><h4>System Settings</h4><p>Control platform settings</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>notifications.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-bell"></i></div>
+                        <div class="quick-link-content"><h4>Notifications</h4><p>Manage admin alerts</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/audit_logs.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-file-earmark-text"></i></div>
+                        <div class="quick-link-content"><h4>Audit Logs</h4><p>Track system activities</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/routes.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-sign-turn-right"></i></div>
+                        <div class="quick-link-content"><h4>Manage Routes</h4><p>Update all travel routes</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/schedules.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-calendar3"></i></div>
+                        <div class="quick-link-content"><h4>Manage Schedules</h4><p>Edit trip schedules</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/events.php" class="quick-link-card featured-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-calendar-event"></i></div>
+                        <div class="quick-link-content"><h4>Events</h4><p>Create promotions and travel events</p></div>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/reports.php" class="quick-link-card">
+                        <div class="quick-link-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                        <div class="quick-link-content"><h4>Open Reports</h4><p>Check system performance</p></div>
+                    </a>
                 </div>
             </div>
         </div>
@@ -229,6 +274,58 @@ function adminStatusBadgeClass(string $status): string
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="panel-card mb-4">
+        <div class="panel-card-header quick-links-header">
+            <div>
+                <h4>Events & Promotions</h4>
+                <p>Track homepage campaigns, announcements and seasonal content.</p>
+            </div>
+            <a href="<?php echo BASE_URL; ?>admin/events.php" class="btn btn-brand btn-sm">Manage Events</a>
+        </div>
+
+        <div class="event-stat-grid mb-4">
+            <div class="event-stat-card">
+                <span>Total Events</span>
+                <strong><?php echo e($eventSummary['total_events']); ?></strong>
+            </div>
+            <div class="event-stat-card">
+                <span>Active</span>
+                <strong><?php echo e($eventSummary['active_events']); ?></strong>
+            </div>
+            <div class="event-stat-card">
+                <span>Draft</span>
+                <strong><?php echo e($eventSummary['draft_events']); ?></strong>
+            </div>
+            <div class="event-stat-card">
+                <span>Expired</span>
+                <strong><?php echo e($eventSummary['expired_events']); ?></strong>
+            </div>
+        </div>
+
+        <?php if (empty($recentEvents)): ?>
+            <div class="empty-inline-box">No events found yet. Add your first event from the events page.</div>
+        <?php else: ?>
+            <div class="row g-3">
+                <?php foreach ($recentEvents as $event): ?>
+                    <div class="col-md-6 col-xl-3">
+                        <div class="dashboard-event-card">
+                            <div class="dashboard-event-top">
+                                <span class="badge bg-<?php echo e(event_status_badge_class((string)$event['status'])); ?>">
+                                    <?php echo e(ucfirst((string)$event['status'])); ?>
+                                </span>
+                                <span class="dashboard-event-type"><?php echo e($event['event_type']); ?></span>
+                            </div>
+                            <h5><?php echo e($event['title']); ?></h5>
+                            <p><?php echo e($event['location'] ?: 'No location'); ?></p>
+                            <div class="dashboard-event-date"><?php echo !empty($event['event_date']) ? e($event['event_date']) : 'No event date'; ?></div>
+                            <a href="<?php echo BASE_URL; ?>admin/events.php?edit=<?php echo (int)$event['id']; ?>" class="dashboard-event-link">Edit event</a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="row g-4">
