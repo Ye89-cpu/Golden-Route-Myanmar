@@ -11,3 +11,8 @@ Default local database config:
 - Database: myanmar_bus_tour_booking
 - User: root
 - Password: empty
+
+
+
+- bus admin password is password
+- all password is password
