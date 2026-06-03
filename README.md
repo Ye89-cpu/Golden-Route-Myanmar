@@ -1,44 +1,48 @@
 # Golden Route Myanmar
 
-Golden Route Myanmar is a web-based bus ticket and tour booking management system. The system allows customers to search bus trips, book seats, submit payment proof, and manage their booking history. It also supports multiple admin roles such as Super Admin, Bus Company Admin, and Tour Admin.
+Golden Route Myanmar is a PHP and MySQL based web system for bus ticket booking, tour package booking, company management, payment proof submission, schedule generation, and business reporting.
 
-## Project Features
+The system supports customers, Super Admin, Bus Company Admin, and Tour Company Admin.
 
-### Customer Features
+---
+
+## Main Features
+
+### Customer
 
 * Register and login
-* Search available bus trips by route and date
-* View bus company, route, price, departure time, arrival time, and available seats
-* Select seats and create booking
+* Search bus trips by city and travel date
+* View bus company, route, price, seat availability, and schedule
+* Choose seats and create booking
 * Submit payment proof with screenshot
 * View booking history and payment status
-* Receive system notifications
 
-### Super Admin Features
+### Super Admin
 
 * Manage bus companies and tour companies
-* Approve company accounts
-* Manage cities
-* Manage bus routes
-* Manage route schedules
-* Auto-generate trips from schedule templates
-* Review bookings and payments
-* Manage notifications and system data
+* Add, edit, delete, and suspend companies
+* Create company admin accounts
+* Manage routes and schedules
+* Generate trips automatically from schedule templates
+* Review payments
+* View business reports
+* Export business reports as PDF
+* Manage events, notifications, settings, and audit logs
 
-### Bus Company Admin Features
+### Bus Company Admin
 
 * Manage buses
-* Manage routes
+* Manage bus routes
 * Manage schedules
-* View company bookings
-* Track trip and payment status
+* View bus bookings and trip data
 
-### Tour Admin Features
+### Tour Company Admin
 
 * Manage tour packages
 * Manage tour batches
 * View tour bookings
-* Manage tour-related information
+
+---
 
 ## Technologies Used
 
@@ -48,10 +52,12 @@ Golden Route Myanmar is a web-based bus ticket and tour booking management syste
 * CSS
 * Bootstrap
 * JavaScript
-* XAMPP / LAMPP
+* XAMPP / LAMPP / MAMP
 * phpMyAdmin
 
-## Project Folder Structure
+---
+
+## Folder Structure
 
 ```text
 Golden-Route-Myanmar/
@@ -70,6 +76,7 @@ Golden-Route-Myanmar/
 ├── auto_run.php
 ├── checkout.php
 ├── config.php
+├── config.example.php
 ├── index.php
 ├── login.php
 ├── register.php
@@ -77,38 +84,96 @@ Golden-Route-Myanmar/
 └── README.md
 ```
 
-## How to Run the Project Locally
+---
 
-### 1. Copy the Project to LAMPP/XAMPP
+# How to Run This Project From Git Clone
 
-For Linux LAMPP:
+## 1. Install Required Software
 
-```bash
-sudo cp -r Golden-Route-Myanmar /opt/lampp/htdocs/
+Install one of the following depending on your operating system.
+
+### Windows
+
+Install XAMPP.
+
+### Linux
+
+Install XAMPP/LAMPP.
+
+### macOS
+
+Install MAMP or XAMPP.
+
+Required services:
+
+```text
+Apache
+MySQL / MariaDB
+phpMyAdmin
 ```
 
-Go to the project folder:
+---
+
+## 2. Clone the Project
+
+### Windows XAMPP
+
+Open Git Bash or terminal:
 
 ```bash
-cd /opt/lampp/htdocs/Golden-Route-Myanmar
+cd C:/xampp/htdocs
+git clone https://github.com/Ye89-cpu/Golden-Route-Myanmar.git
+cd Golden-Route-Myanmar
 ```
 
-### 2. Start Apache and MySQL
-
-For Linux LAMPP:
+### Linux LAMPP
 
 ```bash
-sudo /opt/lampp/lampp start
+cd /opt/lampp/htdocs
+sudo git clone https://github.com/Ye89-cpu/Golden-Route-Myanmar.git
+cd Golden-Route-Myanmar
 ```
 
-Or open XAMPP/LAMPP Control Panel and start:
+If permission is needed:
+
+```bash
+sudo chown -R $USER:$USER /opt/lampp/htdocs/Golden-Route-Myanmar
+```
+
+### macOS MAMP
+
+```bash
+cd /Applications/MAMP/htdocs
+git clone https://github.com/Ye89-cpu/Golden-Route-Myanmar.git
+cd Golden-Route-Myanmar
+```
+
+---
+
+## 3. Start Apache and MySQL
+
+### Windows
+
+Open XAMPP Control Panel and start:
 
 ```text
 Apache
 MySQL
 ```
 
-### 3. Create Database
+### Linux
+
+```bash
+sudo /opt/lampp/lampp start
+```
+
+### macOS
+
+Open MAMP or XAMPP and start the servers.
+
+---
+
+## 4. Create Database
 
 Open phpMyAdmin:
 
@@ -130,7 +195,11 @@ Example:
 database/myanmar_bus_tour_booking.sql
 ```
 
-### 4. Configure Database Connection
+If your SQL file name is different, import the main `.sql` file inside the `database/` folder.
+
+---
+
+## 5. Configure Database Connection
 
 Open:
 
@@ -138,7 +207,9 @@ Open:
 config.php
 ```
 
-Check database settings:
+Make sure the database settings are correct.
+
+For most XAMPP/LAMPP setups:
 
 ```php
 define('DB_HOST', 'localhost');
@@ -147,83 +218,77 @@ define('DB_PASS', '');
 define('DB_NAME', 'myanmar_bus_tour_booking');
 ```
 
-If your MySQL password is different, update `DB_PASS`.
+If your MySQL password is not empty, update `DB_PASS`.
 
-### 5. Fix Upload and Log Folder Permission
+Example:
 
-For Linux/LAMPP, run:
+```php
+define('DB_PASS', 'your_mysql_password');
+```
+
+---
+
+## 6. Create Required Writable Folders
+
+### Linux / macOS
+
+Run:
+
+```bash
+mkdir -p uploads/payment_proofs
+mkdir -p uploads/company_logos
+mkdir -p storage/logs
+
+chmod -R 777 uploads
+chmod -R 777 storage
+```
+
+For LAMPP on Linux:
 
 ```bash
 cd /opt/lampp/htdocs/Golden-Route-Myanmar
 
 sudo mkdir -p uploads/payment_proofs
+sudo mkdir -p uploads/company_logos
 sudo mkdir -p storage/logs
 
 sudo chmod -R 777 uploads
 sudo chmod -R 777 storage
 ```
 
-This is required for payment screenshot upload and auto schedule log files.
+### Windows
 
-### 6. Run the Website
+Create these folders manually if they do not exist:
 
-Open browser:
+```text
+uploads/payment_proofs/
+uploads/company_logos/
+storage/logs/
+```
+
+Usually Windows XAMPP does not need chmod.
+
+---
+
+## 7. Run the Project
+
+Open the website:
 
 ```text
 http://localhost/Golden-Route-Myanmar/
 ```
 
-## Auto Schedule Runner
+If the project folder name is different, use that folder name in the URL.
 
-The system includes an auto schedule runner.
-
-Manual test URL:
+Example:
 
 ```text
-http://localhost/Golden-Route-Myanmar/auto_run.php
+http://localhost/your-folder-name/
 ```
 
-This function checks active schedule templates and generates missing trips automatically.
+---
 
-If the result shows:
-
-```text
-status => success
-generated => 0
-skipped => ...
-templates => ...
-```
-
-It means the runner is working. `skipped` means trips already exist and were not duplicated.
-
-## Important Notes
-
-* Routes must be created before schedules.
-* Buses must exist before schedules can generate trips.
-* Schedule templates must be active.
-* Trips must have `open` or `scheduled` status to appear in customer search.
-* Payment screenshot folder must have write permission.
-* Uploaded payment screenshots are stored in:
-
-```text
-uploads/payment_proofs/
-```
-
-## Recommended Git Ignore
-
-Create a `.gitignore` file and add:
-
-```gitignore
-uploads/payment_proofs/*
-storage/logs/*
-*.log
-.DS_Store
-.env
-vendor/
-node_modules/
-```
-
-## Main Project URLs
+# Important URLs
 
 Home page:
 
@@ -231,13 +296,49 @@ Home page:
 http://localhost/Golden-Route-Myanmar/
 ```
 
-Bus search:
+Login:
+
+```text
+http://localhost/Golden-Route-Myanmar/login.php
+```
+
+Register:
+
+```text
+http://localhost/Golden-Route-Myanmar/register.php
+```
+
+Search bus:
 
 ```text
 http://localhost/Golden-Route-Myanmar/search_bus.php
 ```
 
-Auto schedule runner:
+Tours:
+
+```text
+http://localhost/Golden-Route-Myanmar/tours.php
+```
+
+Super Admin dashboard:
+
+```text
+http://localhost/Golden-Route-Myanmar/admin/dashboard.php
+```
+
+Company management:
+
+```text
+http://localhost/Golden-Route-Myanmar/admin/companies.php
+```
+
+Business reports:
+
+```text
+http://localhost/Golden-Route-Myanmar/admin/business_reports.php
+```
+
+Manual auto schedule runner:
 
 ```text
 http://localhost/Golden-Route-Myanmar/auto_run.php
@@ -249,6 +350,313 @@ phpMyAdmin:
 http://localhost/phpmyadmin
 ```
 
-## Project Purpose
+---
 
-Golden Route Myanmar is developed to support digital transformation in Myanmar’s transportation and travel industry. It helps customers find bus trips and tours more easily while allowing companies and administrators to manage routes, schedules, bookings, and payments in one platform.
+# Auto Schedule Runner
+
+The project includes an auto schedule runner.
+
+It checks active schedule templates and creates missing trips automatically.
+
+Manual test:
+
+```text
+http://localhost/Golden-Route-Myanmar/auto_run.php
+```
+
+If the result shows:
+
+```text
+status => success
+generated => 0
+skipped => ...
+templates => ...
+```
+
+That is normal.
+
+Meaning:
+
+```text
+generated = new trips created
+skipped = trips already existed, so they were not duplicated
+templates = active schedule templates found
+```
+
+---
+
+# Company Logos
+
+Company logos are stored in:
+
+```text
+uploads/company_logos/
+```
+
+The `companies.logo` database column should contain paths like:
+
+```text
+uploads/company_logos/company-name-1.svg
+```
+
+If logos do not show, check:
+
+```text
+1. The file exists inside uploads/company_logos/
+2. The database logo path is correct
+3. Browser cache is cleared using Ctrl + F5
+```
+
+---
+
+# Payment Screenshots
+
+Payment screenshots are stored in:
+
+```text
+uploads/payment_proofs/
+```
+
+This folder must be writable.
+
+On Linux/LAMPP:
+
+```bash
+sudo chmod -R 777 uploads
+```
+
+---
+
+# Creating Company Admin Accounts
+
+Super Admin can create company admin accounts.
+
+Flow:
+
+```text
+Super Admin Login
+→ Admin Dashboard
+→ Companies
+→ Add Company
+→ Add Admin
+→ Create bus_admin or tour_admin account
+```
+
+Company types:
+
+```text
+bus_company    = Bus Company
+tour_operator  = Tour Company
+both           = Bus + Tour Company
+```
+
+Admin roles:
+
+```text
+bus_admin
+tour_admin
+```
+
+If company type is `both`, you may create two accounts:
+
+```text
+1 bus_admin account
+1 tour_admin account
+```
+
+---
+
+# Business Reports
+
+Super Admin can open:
+
+```text
+admin/business_reports.php
+```
+
+Reports include:
+
+```text
+Booking report
+Payment report
+Tour package payment report
+Company business table
+Revenue summary
+PDF export
+```
+
+PDF export page:
+
+```text
+admin/business_reports_pdf.php
+```
+
+---
+
+# Common Problems and Fixes
+
+## 1. Database connection error
+
+Check `config.php`.
+
+Make sure:
+
+```text
+DB name is correct
+MySQL is running
+Username and password are correct
+```
+
+---
+
+## 2. Screenshot upload failed
+
+Run:
+
+```bash
+sudo chmod -R 777 uploads
+```
+
+Make sure this folder exists:
+
+```text
+uploads/payment_proofs/
+```
+
+---
+
+## 3. Auto schedule lock file error
+
+Run:
+
+```bash
+sudo chmod -R 777 storage
+```
+
+Make sure this folder exists:
+
+```text
+storage/logs/
+```
+
+---
+
+## 4. No trips found
+
+Check these tables:
+
+```text
+companies
+routes
+buses
+schedule_templates
+trips
+```
+
+A trip will show only if:
+
+```text
+company is approved
+route is active
+bus is active
+trip status is open or scheduled
+available seats are greater than 0
+trip date matches the search date
+```
+
+---
+
+## 5. Company admin cannot login
+
+Check:
+
+```text
+users table
+company_users table
+user role or user_type
+company_id link
+user status
+```
+
+The user must be linked to the company in `company_users`.
+
+---
+
+# Git Commands for Developers
+
+Check changes:
+
+```bash
+git status
+```
+
+Add files:
+
+```bash
+git add .
+```
+
+Commit:
+
+```bash
+git commit -m "Update project"
+```
+
+Pull latest GitHub changes before pushing:
+
+```bash
+git pull --rebase origin main
+```
+
+Push:
+
+```bash
+git push origin main
+```
+
+If branch is master:
+
+```bash
+git push origin master
+```
+
+---
+
+# Recommended .gitignore
+
+```gitignore
+storage/logs/*
+uploads/payment_proofs/*
+*.log
+.DS_Store
+.env
+vendor/
+node_modules/
+```
+
+Do not ignore `uploads/company_logos/` if demo company logos should appear after cloning.
+
+---
+
+# Stable Setup Checklist
+
+After cloning on a new device:
+
+```text
+1. Start Apache and MySQL
+2. Import database SQL
+3. Check config.php
+4. Create uploads/payment_proofs folder
+5. Create uploads/company_logos folder
+6. Create storage/logs folder
+7. Set folder permission if using Linux/macOS
+8. Open homepage
+9. Login as Super Admin
+10. Run auto_run.php if trips need to be generated
+```
+
+---
+
+# Project Purpose
+
+Golden Route Myanmar is developed to support digital transformation in Myanmar’s bus ticketing and tour booking industry. It allows customers, companies, and administrators to manage travel services through one organized platform.
