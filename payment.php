@@ -225,7 +225,7 @@ require_once __DIR__ . '/includes/header.php';
 
                                 <div class="col-12">
                                     <label class="form-label">Payment Screenshot</label>
-                                    <input type="file" name="payment_screenshot" class="form-control" accept=".jpg,.jpeg,.png,.webp">
+                                    <input type="file" name="payment_screenshot" class="form-control" accept=".jpg,.jpeg,.png,.webp" required>
                                 </div>
 
                                 <div class="col-12">

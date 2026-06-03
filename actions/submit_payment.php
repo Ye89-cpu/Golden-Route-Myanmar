@@ -19,6 +19,7 @@ function submit_payment_store_old_input(array $input): void
     if (session_status() !== PHP_SESSION_ACTIVE) {
         @session_start();
     }
+
     $_SESSION['old_input'] = $input;
 }
 
@@ -27,6 +28,7 @@ function submit_payment_clear_old_input(): void
     if (session_status() !== PHP_SESSION_ACTIVE) {
         @session_start();
     }
+
     unset($_SESSION['old_input']);
 }
 
@@ -36,7 +38,25 @@ function submit_payment_safe_file_name(string $name): string
     return trim((string)$name, '_');
 }
 
+function submit_payment_prepare_upload_folder(string $folder): void
+{
+    if (!is_dir($folder)) {
+        if (!@mkdir($folder, 0777, true)) {
+            throw new Exception('Failed to create upload folder: ' . $folder);
+        }
+    }
+
+    @chmod($folder, 0777);
+
+    if (!is_writable($folder)) {
+        throw new Exception(
+            'Upload folder is not writable. Please run: sudo chmod -R 777 uploads'
+        );
+    }
+}
+
 $currentUserId = (int) current_user_id();
+
 $bookingId = (int)($_POST['booking_id'] ?? 0);
 $paymentMethod = trim((string)($_POST['payment_method'] ?? ''));
 $transactionRef = trim((string)($_POST['transaction_ref'] ?? ''));
@@ -48,7 +68,12 @@ submit_payment_store_old_input([
     'notes' => $notes,
 ]);
 
-$allowedPaymentMethods = ['wave_money', 'kbzpay', 'cash', 'bank_transfer'];
+$allowedPaymentMethods = [
+    'wave_money',
+    'kbzpay',
+    'cash',
+    'bank_transfer',
+];
 
 if ($bookingId <= 0) {
     set_flash('error', 'Invalid booking selected.');
@@ -61,15 +86,11 @@ if (!in_array($paymentMethod, $allowedPaymentMethods, true)) {
 }
 
 $conn = getDBConnection();
+$savedScreenshotFs = null;
 
 try {
     $conn->begin_transaction();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate booking ownership and status
-    |--------------------------------------------------------------------------
-    */
     $bookingSql = "
         SELECT
             id,
@@ -84,15 +105,19 @@ try {
         LIMIT 1
         FOR UPDATE
     ";
+
     $bookingStmt = $conn->prepare($bookingSql);
+
     if (!$bookingStmt) {
         throw new Exception('Failed to prepare booking lookup.');
     }
 
     $bookingStmt->bind_param('ii', $bookingId, $currentUserId);
     $bookingStmt->execute();
+
     $bookingResult = $bookingStmt->get_result();
     $booking = $bookingResult ? $bookingResult->fetch_assoc() : null;
+
     $bookingStmt->close();
 
     if (!$booking) {
@@ -114,74 +139,80 @@ try {
     $amount = (float)($booking['total_amount'] ?? 0);
 
     /*
-    |--------------------------------------------------------------------------
-    | Handle screenshot upload
-    |--------------------------------------------------------------------------
+        Screenshot upload is required for payment proof.
     */
-    $screenshotPath = null;
-
     if (
-        isset($_FILES['payment_screenshot']) &&
-        (int)($_FILES['payment_screenshot']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE
+        !isset($_FILES['payment_screenshot']) ||
+        (int)($_FILES['payment_screenshot']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE
     ) {
-        $file = $_FILES['payment_screenshot'];
-
-        $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
-        if ($uploadError !== UPLOAD_ERR_OK) {
-            throw new Exception('Payment screenshot upload failed.');
-        }
-
-        $tmpPath = (string)($file['tmp_name'] ?? '');
-        if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
-            throw new Exception('Invalid uploaded screenshot file.');
-        }
-
-        $maxBytes = 5 * 1024 * 1024;
-        $fileSize = (int)($file['size'] ?? 0);
-        if ($fileSize <= 0 || $fileSize > $maxBytes) {
-            throw new Exception('Screenshot must be smaller than 5MB.');
-        }
-
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo ? finfo_file($finfo, $tmpPath) : '';
-        if ($finfo) {
-            finfo_close($finfo);
-        }
-
-        $allowedMimeToExt = [
-            'image/jpeg' => 'jpg',
-            'image/png'  => 'png',
-            'image/webp' => 'webp',
-        ];
-
-        if (!isset($allowedMimeToExt[$mimeType])) {
-            throw new Exception('Only JPG, PNG, and WEBP screenshots are allowed.');
-        }
-
-        $extension = $allowedMimeToExt[$mimeType];
-        $uploadDirFs = dirname(__DIR__) . '/uploads/payment_proofs';
-        $uploadDirDb = 'uploads/payment_proofs';
-
-        if (!is_dir($uploadDirFs) && !@mkdir($uploadDirFs, 0775, true)) {
-            throw new Exception('Failed to create payment proof upload folder.');
-        }
-
-        $baseName = 'payment_' . $bookingId . '_' . time() . '_' . bin2hex(random_bytes(4));
-        $safeName = submit_payment_safe_file_name($baseName) . '.' . $extension;
-        $destinationFs = $uploadDirFs . '/' . $safeName;
-
-        if (!move_uploaded_file($tmpPath, $destinationFs)) {
-            throw new Exception('Failed to save uploaded screenshot.');
-        }
-
-        $screenshotPath = $uploadDirDb . '/' . $safeName;
+        throw new Exception('Please upload payment screenshot.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Insert payment record
-    |--------------------------------------------------------------------------
-    */
+    $file = $_FILES['payment_screenshot'];
+
+    $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+
+    if ($uploadError !== UPLOAD_ERR_OK) {
+        throw new Exception('Payment screenshot upload failed. Error code: ' . $uploadError);
+    }
+
+    $tmpPath = (string)($file['tmp_name'] ?? '');
+
+    if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+        throw new Exception('Invalid uploaded screenshot file.');
+    }
+
+    $maxBytes = 5 * 1024 * 1024;
+    $fileSize = (int)($file['size'] ?? 0);
+
+    if ($fileSize <= 0) {
+        throw new Exception('Uploaded screenshot is empty.');
+    }
+
+    if ($fileSize > $maxBytes) {
+        throw new Exception('Screenshot must be smaller than 5MB.');
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = $finfo ? finfo_file($finfo, $tmpPath) : '';
+
+    if ($finfo) {
+        finfo_close($finfo);
+    }
+
+    $allowedMimeToExt = [
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/webp' => 'webp',
+    ];
+
+    if (!isset($allowedMimeToExt[$mimeType])) {
+        throw new Exception('Only JPG, PNG, and WEBP screenshots are allowed.');
+    }
+
+    $extension = $allowedMimeToExt[$mimeType];
+
+    $uploadDirFs = dirname(__DIR__) . '/uploads/payment_proofs';
+    $uploadDirDb = 'uploads/payment_proofs';
+
+    submit_payment_prepare_upload_folder($uploadDirFs);
+
+    $baseName = 'payment_' . $bookingId . '_' . time() . '_' . bin2hex(random_bytes(4));
+    $safeName = submit_payment_safe_file_name($baseName) . '.' . $extension;
+
+    $destinationFs = $uploadDirFs . '/' . $safeName;
+
+    if (!move_uploaded_file($tmpPath, $destinationFs)) {
+        throw new Exception(
+            'Failed to save uploaded screenshot. Please check uploads/payment_proofs folder permission.'
+        );
+    }
+
+    @chmod($destinationFs, 0666);
+
+    $savedScreenshotFs = $destinationFs;
+    $screenshotPath = $uploadDirDb . '/' . $safeName;
+
     $paymentStatus = 'submitted';
 
     $paymentSql = "
@@ -199,7 +230,9 @@ try {
         )
         VALUES (?, ?, ?, NULLIF(?, ''), ?, NULLIF(?, ''), ?, NOW(), NOW())
     ";
+
     $paymentStmt = $conn->prepare($paymentSql);
+
     if (!$paymentStmt) {
         throw new Exception('Failed to prepare payment insert.');
     }
@@ -227,11 +260,6 @@ try {
         throw new Exception('Payment record ID could not be generated.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Update booking payment status
-    |--------------------------------------------------------------------------
-    */
     $updateBookingSql = "
         UPDATE bookings
         SET payment_status = 'pending_review',
@@ -239,7 +267,9 @@ try {
         WHERE id = ?
         LIMIT 1
     ";
+
     $updateBookingStmt = $conn->prepare($updateBookingSql);
+
     if (!$updateBookingStmt) {
         throw new Exception('Failed to prepare booking payment update.');
     }
@@ -250,23 +280,29 @@ try {
         $updateBookingStmt->close();
         throw new Exception('Failed to update booking payment status.');
     }
+
     $updateBookingStmt->close();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit log
-    |--------------------------------------------------------------------------
-    */
     $auditAction = 'payment_submitted';
     $entityType = 'payment';
     $auditDescription = 'Submitted payment for booking: ' . ($booking['booking_code'] ?? ('BOOKING-' . $bookingId));
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
 
     $auditSql = "
-        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address)
+        INSERT INTO audit_logs
+        (
+            user_id,
+            action,
+            entity_type,
+            entity_id,
+            description,
+            ip_address
+        )
         VALUES (?, ?, ?, ?, ?, ?)
     ";
+
     $auditStmt = $conn->prepare($auditSql);
+
     if ($auditStmt) {
         $auditStmt->bind_param(
             'ississ',
@@ -277,41 +313,25 @@ try {
             $auditDescription,
             $ipAddress
         );
+
         $auditStmt->execute();
         $auditStmt->close();
     }
 
     $conn->commit();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Non-blocking payment notification / email
-    |--------------------------------------------------------------------------
-    */
     try {
         if (function_exists('notify_event_payment_submitted_by_booking_id')) {
             notify_event_payment_submitted_by_booking_id($conn, $bookingId, $currentUserId);
         }
-    } catch (Throwable $e) {
-        $logDir = __DIR__ . '/../storage/logs';
-        $logFile = $logDir . '/payment_notification_error.log';
-
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0775, true);
-        }
-
-        $message = '[' . date('Y-m-d H:i:s') . '] '
-            . 'PAYMENT_NOTIFICATION_ERROR | booking_id=' . (int)$bookingId
-            . ' | payment_id=' . (int)$paymentId
-            . ' | user_id=' . (int)$currentUserId
-            . ' | message=' . $e->getMessage() . PHP_EOL;
-
-        @file_put_contents($logFile, $message, FILE_APPEND);
+    } catch (Throwable $notifyError) {
+        // Notification error should not block payment submission.
     }
 
     $conn->close();
 
     submit_payment_clear_old_input();
+
     set_flash('success', 'Payment submitted successfully. Your payment is now pending review.');
     submit_payment_redirect($bookingId);
 
@@ -319,6 +339,10 @@ try {
     try {
         $conn->rollback();
     } catch (Throwable $rollbackError) {
+    }
+
+    if ($savedScreenshotFs && file_exists($savedScreenshotFs)) {
+        @unlink($savedScreenshotFs);
     }
 
     try {
