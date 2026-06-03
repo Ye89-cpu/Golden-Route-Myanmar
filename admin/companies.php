@@ -1,59 +1,103 @@
 <?php
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('super_admin');
 
-$page_title = 'Company Management';
-require_once __DIR__ . '/../includes/header.php';
+$page_title = 'Company Management - Golden Route Myanmar';
 
 $conn = getDBConnection();
 
-function company_status_badge_class($status)
+function admin_company_status_badge(string $status): string
 {
     switch ($status) {
         case 'approved':
             return 'success';
+        case 'pending':
+            return 'warning text-dark';
         case 'rejected':
             return 'danger';
         case 'suspended':
             return 'secondary';
-        case 'pending':
         default:
-            return 'warning text-dark';
+            return 'secondary';
     }
 }
 
-$summary = [
-    'total_companies' => 0,
-    'pending_count'   => 0,
-    'approved_count'  => 0,
-    'rejected_count'  => 0,
-    'suspended_count' => 0
-];
-
-$summarySql = "
-    SELECT
-        COUNT(*) AS total_companies,
-        COALESCE(SUM(status = 'pending'), 0) AS pending_count,
-        COALESCE(SUM(status = 'approved'), 0) AS approved_count,
-        COALESCE(SUM(status = 'rejected'), 0) AS rejected_count,
-        COALESCE(SUM(status = 'suspended'), 0) AS suspended_count
-    FROM companies
-";
-$summaryStmt = $conn->prepare($summarySql);
-if ($summaryStmt) {
-    $summaryStmt->execute();
-    $summaryResult = $summaryStmt->get_result();
-    if ($summaryResult && $summaryResult->num_rows === 1) {
-        $summary = $summaryResult->fetch_assoc();
+function admin_company_type_label(string $type): string
+{
+    switch ($type) {
+        case 'bus_company':
+            return 'Bus Company';
+        case 'tour_operator':
+            return 'Tour Operator';
+        case 'both':
+            return 'Bus + Tour Company';
+        default:
+            return ucwords(str_replace('_', ' ', $type));
     }
-    $summaryStmt->close();
+}
+
+function admin_company_logo_url(?string $logo): string
+{
+    $logo = trim((string)$logo);
+
+    if ($logo === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $logo)) {
+        return $logo;
+    }
+
+    return BASE_URL . ltrim($logo, '/');
+}
+
+function admin_company_initials(string $name): string
+{
+    $words = preg_split('/\s+/', trim($name));
+    $initials = '';
+
+    foreach ($words as $word) {
+        if ($word !== '') {
+            $initials .= strtoupper(substr($word, 0, 1));
+        }
+
+        if (strlen($initials) >= 2) {
+            break;
+        }
+    }
+
+    return $initials !== '' ? $initials : 'GR';
+}
+
+$editCompany = null;
+$editId = (int)($_GET['edit'] ?? 0);
+
+if ($editId > 0) {
+    $editSql = "
+        SELECT *
+        FROM companies
+        WHERE id = ?
+        LIMIT 1
+    ";
+
+    $editStmt = $conn->prepare($editSql);
+
+    if ($editStmt) {
+        $editStmt->bind_param('i', $editId);
+        $editStmt->execute();
+
+        $editResult = $editStmt->get_result();
+        $editCompany = $editResult ? $editResult->fetch_assoc() : null;
+
+        $editStmt->close();
+    }
 }
 
 $companies = [];
-$listSql = "
+
+$companySql = "
     SELECT
         id,
         name,
@@ -62,46 +106,41 @@ $listSql = "
         phone,
         email,
         address,
+        description,
+        logo,
         status,
         approved_at,
-        created_at
+        created_at,
+        updated_at
     FROM companies
-    ORDER BY FIELD(status, 'pending', 'approved', 'suspended', 'rejected'), id DESC
+    ORDER BY id DESC
 ";
-$listStmt = $conn->prepare($listSql);
-if ($listStmt) {
-    $listStmt->execute();
-    $listResult = $listStmt->get_result();
-    while ($row = $listResult->fetch_assoc()) {
-        $row['admin'] = get_company_primary_admin($conn, (int)$row['id']);
-        if (!empty($row['admin']['company_user_id'])) {
-            $row['admin_permissions'] = get_company_permission_keys($conn, (int)$row['admin']['company_user_id']);
-        } else {
-            $row['admin_permissions'] = [];
-        }
+
+$companyStmt = $conn->prepare($companySql);
+
+if ($companyStmt) {
+    $companyStmt->execute();
+    $companyResult = $companyStmt->get_result();
+
+    while ($row = $companyResult->fetch_assoc()) {
         $companies[] = $row;
     }
-    $listStmt->close();
+
+    $companyStmt->close();
 }
 
-$allPermissions = [
-    'manage_buses' => 'Manage Buses',
-    'manage_bookings' => 'Manage Bookings',
-    'approve_bookings' => 'Approve Bookings',
-    'manage_routes' => 'Manage Routes',
-    'manage_schedules' => 'Manage Schedules',
-    'view_ticket' => 'View / Scan Ticket',
-];
-
 $conn->close();
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="container py-5">
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Company Management</h2>
-            <p class="text-muted mb-0">
-                Create companies, approve them, auto-create admin accounts, and assign permissions.
+            <span class="section-kicker">Super Admin</span>
+            <h1 class="page-title mb-2">Company Management</h1>
+            <p class="page-subtitle mb-0">
+                Add, edit, delete, and create admin accounts for bus companies and tour operators.
             </p>
         </div>
 
@@ -113,262 +152,273 @@ $conn->close();
     </div>
 
     <?php if ($success = get_flash('success')): ?>
-        <div class="alert alert-success"><?php echo e($success); ?></div>
+        <div class="alert alert-success">
+            <?php echo e($success); ?>
+        </div>
     <?php endif; ?>
 
     <?php if ($error = get_flash('error')): ?>
-        <div class="alert alert-danger"><?php echo e($error); ?></div>
+        <div class="alert alert-danger">
+            <?php echo e($error); ?>
+        </div>
     <?php endif; ?>
 
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
-            <h4 class="fw-bold mb-3">Create New Company</h4>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="panel-card h-100">
+                <div class="panel-card-header">
+                    <h4><?php echo $editCompany ? 'Edit Company' : 'Add New Company'; ?></h4>
+                    <p>
+                        <?php echo $editCompany ? 'Update selected company information.' : 'Create new bus company, tour operator, or combined company.'; ?>
+                    </p>
+                </div>
 
-            <form action="<?php echo BASE_URL; ?>actions/create_company.php" method="POST">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Company Name</label>
-                        <input type="text" name="name" class="form-control" required>
+                <form action="<?php echo BASE_URL . ($editCompany ? 'actions/update_company.php' : 'actions/create_company.php'); ?>" method="POST">
+                    <?php if ($editCompany): ?>
+                        <input type="hidden" name="company_id" value="<?php echo e($editCompany['id']); ?>">
+                    <?php endif; ?>
+
+                    <div class="mb-3">
+                        <label class="form-label">Company Name <span class="text-danger">*</span></label>
+                        <input
+                            type="text"
+                            name="name"
+                            class="form-control"
+                            value="<?php echo e($editCompany['name'] ?? ''); ?>"
+                            placeholder="Example: JJ Myanmar Express"
+                            required
+                        >
                     </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label">Company Type</label>
+                    <div class="mb-3">
+                        <label class="form-label">Company Type <span class="text-danger">*</span></label>
+                        <?php $selectedType = $editCompany['company_type'] ?? 'bus_company'; ?>
+
                         <select name="company_type" class="form-select" required>
-                            <option value="bus_company">Bus Company</option>
-                            <option value="tour_operator">Tour Operator</option>
-                            <option value="both">Both</option>
+                            <option value="bus_company" <?php echo $selectedType === 'bus_company' ? 'selected' : ''; ?>>
+                                Bus Company
+                            </option>
+
+                            <option value="tour_operator" <?php echo $selectedType === 'tour_operator' ? 'selected' : ''; ?>>
+                                Tour Operator
+                            </option>
+
+                            <option value="both" <?php echo $selectedType === 'both' ? 'selected' : ''; ?>>
+                                Bus + Tour Company
+                            </option>
                         </select>
                     </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label">Initial Status</label>
-                        <select name="status" class="form-select" required>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
+                    <div class="mb-3">
                         <label class="form-label">License</label>
-                        <input type="text" name="license" class="form-control">
+                        <input
+                            type="text"
+                            name="license"
+                            class="form-control"
+                            value="<?php echo e($editCompany['license'] ?? ''); ?>"
+                            placeholder="Example: LIC-BUS-2026"
+                        >
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Phone</label>
-                        <input type="text" name="phone" class="form-control">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input
+                                type="text"
+                                name="phone"
+                                class="form-control"
+                                value="<?php echo e($editCompany['phone'] ?? ''); ?>"
+                                placeholder="09450000000"
+                            >
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input
+                                type="email"
+                                name="email"
+                                class="form-control"
+                                value="<?php echo e($editCompany['email'] ?? ''); ?>"
+                                placeholder="company@example.com"
+                            >
+                        </div>
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Company Email</label>
-                        <input type="email" name="email" class="form-control">
-                    </div>
-
-                    <div class="col-12">
+                    <div class="mt-3 mb-3">
                         <label class="form-label">Address</label>
-                        <input type="text" name="address" class="form-control">
+                        <input
+                            type="text"
+                            name="address"
+                            class="form-control"
+                            value="<?php echo e($editCompany['address'] ?? ''); ?>"
+                            placeholder="Yangon, Mandalay, Naypyidaw..."
+                        >
                     </div>
 
-                    <div class="col-12">
+                    <div class="mb-3">
+                        <label class="form-label">Logo Path</label>
+                        <input
+                            type="text"
+                            name="logo"
+                            class="form-control"
+                            value="<?php echo e($editCompany['logo'] ?? ''); ?>"
+                            placeholder="uploads/company_logos/company-name-1.svg"
+                        >
+                        <div class="form-text">
+                            Example: uploads/company_logos/jj-myanmar-express-14.svg
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <textarea name="description" rows="3" class="form-control"></textarea>
+                        <textarea
+                            name="description"
+                            rows="4"
+                            class="form-control"
+                            placeholder="Short company description"
+                        ><?php echo e($editCompany['description'] ?? ''); ?></textarea>
                     </div>
 
-                    <div class="col-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="create_admin_now" id="create_admin_now" value="1">
-                            <label class="form-check-label" for="create_admin_now">
-                                Auto-create company admin now
-                            </label>
-                        </div>
+                    <div class="mb-4">
+                        <label class="form-label">Status <span class="text-danger">*</span></label>
+                        <?php $selectedStatus = $editCompany['status'] ?? 'approved'; ?>
+
+                        <select name="status" class="form-select" required>
+                            <option value="approved" <?php echo $selectedStatus === 'approved' ? 'selected' : ''; ?>>
+                                Approved
+                            </option>
+
+                            <option value="pending" <?php echo $selectedStatus === 'pending' ? 'selected' : ''; ?>>
+                                Pending
+                            </option>
+
+                            <option value="rejected" <?php echo $selectedStatus === 'rejected' ? 'selected' : ''; ?>>
+                                Rejected
+                            </option>
+
+                            <option value="suspended" <?php echo $selectedStatus === 'suspended' ? 'selected' : ''; ?>>
+                                Suspended
+                            </option>
+                        </select>
                     </div>
 
-<div class="col-md-6">
-                        <label class="form-label">Admin Name (optional)</label>
-                        <input type="text" name="admin_name" class="form-control" placeholder="Example: Ayar Bus Admin">
-                    </div>
+                    <button type="submit" class="btn btn-brand w-100">
+                        <?php echo $editCompany ? 'Update Company' : '+ Add Company'; ?>
+                    </button>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Admin Phone (optional)</label>
-                        <input type="text" name="admin_phone" class="form-control" placeholder="Example: 09xxxxxxxxx">
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">Admin Email (optional)</label>
-                        <input type="email" name="admin_email" class="form-control">
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">Admin Password (optional)</label>
-                        <input type="text" name="admin_password" class="form-control" placeholder="Leave blank for auto-generated password">
-                    </div>
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-primary">Create Company</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Total</div>
-                    <div class="fs-4 fw-bold"><?php echo e($summary['total_companies']); ?></div>
-                </div>
+                    <?php if ($editCompany): ?>
+                        <a href="<?php echo BASE_URL; ?>admin/companies.php" class="btn btn-outline-secondary w-100 mt-2">
+                            Cancel Edit
+                        </a>
+                    <?php endif; ?>
+                </form>
             </div>
         </div>
 
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Pending</div>
-                    <div class="fs-4 fw-bold text-warning"><?php echo e($summary['pending_count']); ?></div>
+        <div class="col-lg-7">
+            <div class="panel-card h-100">
+                <div class="panel-card-header">
+                    <h4>Companies</h4>
+                    <p>All registered bus and tour companies.</p>
                 </div>
-            </div>
-        </div>
 
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Approved</div>
-                    <div class="fs-4 fw-bold text-success"><?php echo e($summary['approved_count']); ?></div>
-                </div>
-            </div>
-        </div>
+                <?php if (empty($companies)): ?>
+                    <div class="empty-inline-box">
+                        No companies found. Add your first company from the form.
+                    </div>
+                <?php else: ?>
+                    <div class="admin-list-stack">
+                        <?php foreach ($companies as $company): ?>
+                            <?php $logoUrl = admin_company_logo_url($company['logo'] ?? ''); ?>
 
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Suspended</div>
-                    <div class="fs-4 fw-bold text-secondary"><?php echo e($summary['suspended_count']); ?></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <?php foreach ($companies as $company): ?>
-            <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-body p-4">
-                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-3">
-                            <div>
-                                <h5 class="fw-bold mb-1"><?php echo e($company['name']); ?></h5>
-                                <div class="text-muted small">
-                                    <?php echo e(ucwords(str_replace('_', ' ', $company['company_type']))); ?>
-                                    <?php if (!empty($company['license'])): ?>
-                                        · License: <?php echo e($company['license']); ?>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-
-                            <span class="badge bg-<?php echo company_status_badge_class($company['status']); ?>">
-                                <?php echo e(ucfirst($company['status'])); ?>
-                            </span>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <div class="small text-muted">Phone</div>
-                                <div><?php echo e($company['phone'] ?: '-'); ?></div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="small text-muted">Email</div>
-                                <div><?php echo e($company['email'] ?: '-'); ?></div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="small text-muted">Address</div>
-                                <div><?php echo e($company['address'] ?: '-'); ?></div>
-                            </div>
-                        </div>
-
-                        <div class="border rounded-4 p-3 mb-3 bg-light-subtle">
-                            <h6 class="fw-bold mb-2">Linked Admin</h6>
-
-                            <?php if (!empty($company['admin'])): ?>
-                                <div class="row g-2">
-                                    <div class="col-md-4">
-                                        <div class="small text-muted">Name</div>
-                                        <div><?php echo e($company['admin']['name'] ?? '-'); ?></div>
+                            <div class="admin-list-item align-items-start">
+                                <div class="d-flex gap-3 align-items-start">
+                                    <div style="width: 72px; height: 72px; border-radius: 18px; overflow: hidden; border: 1px solid #e5e7eb; background: #f8fafc; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;">
+                                        <?php if ($logoUrl !== ''): ?>
+                                            <img
+                                                src="<?php echo e($logoUrl); ?>"
+                                                alt="<?php echo e($company['name']); ?> logo"
+                                                style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                                            >
+                                        <?php else: ?>
+                                            <strong>
+                                                <?php echo e(admin_company_initials((string)$company['name'])); ?>
+                                            </strong>
+                                        <?php endif; ?>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="small text-muted">Email</div>
-                                        <div><?php echo e($company['admin']['email'] ?? '-'); ?></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="small text-muted">Role</div>
-                                        <div><?php echo e($company['admin']['role'] ?? '-'); ?></div>
-                                    </div>
-                                </div>
-                            <?php else: ?>
-                                <div class="text-muted">No admin linked yet.</div>
-                            <?php endif; ?>
-                        </div>
 
-                        <div class="d-flex flex-wrap gap-2 mb-4">
-                            <?php if ($company['status'] !== 'approved'): ?>
-                                <form action="<?php echo BASE_URL; ?>actions/approve_company.php" method="POST" class="d-flex flex-wrap gap-2">
-                                    <input type="hidden" name="company_id" value="<?php echo e($company['id']); ?>">
-                                    <input type="hidden" name="auto_create_admin" value="1">
-                                    <button type="submit" class="btn btn-success">Approve + Auto Create Admin</button>
-                                </form>
-                            <?php endif; ?>
+                                    <div>
+                                        <strong><?php echo e($company['name']); ?></strong>
 
-                            <?php if ($company['status'] !== 'rejected'): ?>
-                                <form action="<?php echo BASE_URL; ?>actions/reject_company.php" method="POST">
-                                    <input type="hidden" name="company_id" value="<?php echo e($company['id']); ?>">
-                                    <button type="submit" class="btn btn-danger">Reject</button>
-                                </form>
-                            <?php endif; ?>
+                                        <div class="text-muted small mt-1">
+                                            <?php echo e(admin_company_type_label((string)$company['company_type'])); ?>
+                                            <?php if (!empty($company['license'])): ?>
+                                                · License: <?php echo e($company['license']); ?>
+                                            <?php endif; ?>
+                                        </div>
 
-                            <?php if ($company['status'] === 'approved'): ?>
-                                <form action="<?php echo BASE_URL; ?>actions/suspend_company.php" method="POST">
-                                    <input type="hidden" name="company_id" value="<?php echo e($company['id']); ?>">
-                                    <button type="submit" class="btn btn-outline-secondary">Suspend</button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
+                                        <div class="text-muted small mt-1">
+                                            <?php echo e($company['phone'] ?: '-'); ?>
+                                            <?php if (!empty($company['email'])): ?>
+                                                · <?php echo e($company['email']); ?>
+                                            <?php endif; ?>
+                                        </div>
 
-                        <?php if (!empty($company['admin']['company_user_id'])): ?>
-                            <div class="border rounded-4 p-3">
-                                <h6 class="fw-bold mb-3">Admin Permissions</h6>
+                                        <div class="text-muted small mt-1">
+                                            <?php echo e($company['address'] ?: 'No address'); ?>
+                                        </div>
 
-                                <form action="<?php echo BASE_URL; ?>actions/update_company_permissions.php" method="POST">
-                                    <input type="hidden" name="company_user_id" value="<?php echo e($company['admin']['company_user_id']); ?>">
-
-                                    <div class="row g-3">
-                                        <?php foreach ($allPermissions as $permissionKey => $permissionLabel): ?>
-                                            <div class="col-md-4">
-                                                <div class="form-check">
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="checkbox"
-                                                        name="permissions[]"
-                                                        value="<?php echo e($permissionKey); ?>"
-                                                        id="perm_<?php echo e($company['id'] . '_' . $permissionKey); ?>"
-                                                        <?php echo in_array($permissionKey, $company['admin_permissions'], true) ? 'checked' : ''; ?>
-                                                    >
-                                                    <label class="form-check-label" for="perm_<?php echo e($company['id'] . '_' . $permissionKey); ?>">
-                                                        <?php echo e($permissionLabel); ?>
-                                                    </label>
-                                                </div>
+                                        <?php if (!empty($company['description'])): ?>
+                                            <div class="small mt-2">
+                                                <?php echo e(mb_strimwidth((string)$company['description'], 0, 120, '...')); ?>
                                             </div>
-                                        <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <span class="badge bg-<?php echo admin_company_status_badge((string)$company['status']); ?>">
+                                        <?php echo e(ucfirst((string)$company['status'])); ?>
+                                    </span>
+
+                                    <div class="mt-3 d-flex flex-wrap gap-2 justify-content-end">
+                                        <a
+                                            href="<?php echo BASE_URL; ?>admin/companies.php?edit=<?php echo e($company['id']); ?>"
+                                            class="btn btn-sm btn-outline-primary"
+                                        >
+                                            Edit
+                                        </a>
+
+                                        <a
+                                            href="<?php echo BASE_URL; ?>admin/create_company_admin.php?company_id=<?php echo e($company['id']); ?>"
+                                            class="btn btn-sm btn-outline-success"
+                                        >
+                                            Add Admin
+                                        </a>
+
+                                        <form
+                                            action="<?php echo BASE_URL; ?>actions/delete_company.php"
+                                            method="POST"
+                                            onsubmit="return confirm('Are you sure you want to delete this company? If related data exists, it will be suspended instead of deleted.');"
+                                        >
+                                            <input type="hidden" name="company_id" value="<?php echo e($company['id']); ?>">
+
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Delete
+                                            </button>
+                                        </form>
                                     </div>
 
-                                    <div class="mt-3">
-                                        <button type="submit" class="btn btn-primary">Save Permissions</button>
+                                    <div class="text-muted small mt-2">
+                                        Created: <?php echo e(date('Y-m-d', strtotime((string)$company['created_at']))); ?>
                                     </div>
-                                </form>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                        <?php endforeach; ?>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
-        <?php endforeach; ?>
+        </div>
     </div>
 </div>
 

@@ -18,6 +18,60 @@ $stats = [
 $sliderEvents = [];
 $featuredBusCompanies = [];
 
+/*
+    FIX FOR COMPANY LOGO DISPLAY
+
+    Problem:
+    Some company logo paths in database are like:
+    assets/company_logos/company-name.svg
+
+    But generated logo files are inside:
+    uploads/company_logos/company-name-id.svg
+
+    This helper first checks database logo path.
+    If file does not exist, it tries the generated upload logo path.
+*/
+
+function home_safe_logo_file_name(string $name): string
+{
+    $name = strtolower(trim($name));
+    $name = preg_replace('/[^a-z0-9]+/', '-', $name);
+    $name = trim($name, '-');
+
+    return $name !== '' ? $name : 'company';
+}
+
+function home_company_logo_url(array $company): string
+{
+    $companyId = (int)($company['id'] ?? 0);
+    $companyName = (string)($company['name'] ?? 'company');
+    $dbLogoPath = trim((string)($company['logo'] ?? ''));
+
+    // 1. Try database logo path first.
+    if ($dbLogoPath !== '') {
+        $cleanPath = ltrim($dbLogoPath, '/');
+        $fullPath = __DIR__ . '/' . $cleanPath;
+
+        if (is_file($fullPath)) {
+            return BASE_URL . $cleanPath;
+        }
+    }
+
+    // 2. Try generated upload logo path.
+    if ($companyId > 0) {
+        $generatedFile = home_safe_logo_file_name($companyName) . '-' . $companyId . '.svg';
+        $generatedPath = 'uploads/company_logos/' . $generatedFile;
+        $generatedFullPath = __DIR__ . '/' . $generatedPath;
+
+        if (is_file($generatedFullPath)) {
+            return BASE_URL . $generatedPath;
+        }
+    }
+
+    // 3. No valid logo found.
+    return '';
+}
+
 try {
     $queries = [
         'open_trips' => "SELECT COUNT(*) AS total FROM trips WHERE status = 'open' AND trip_date >= CURDATE()",
@@ -167,6 +221,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 <?php if ($eventDate): ?>
                                                     <span><i class="bi bi-calendar-event"></i> <?php echo $eventDate; ?></span>
                                                 <?php endif; ?>
+
                                                 <?php if ($eventLocation): ?>
                                                     <span><i class="bi bi-geo-alt"></i> <?php echo $eventLocation; ?></span>
                                                 <?php endif; ?>
@@ -185,6 +240,7 @@ require_once __DIR__ . '/includes/header.php';
                             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Previous</span>
                         </button>
+
                         <button class="carousel-control-next" type="button" data-bs-target="#homePromoCarousel" data-bs-slide="next">
                             <span class="carousel-control-next-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Next</span>
@@ -247,6 +303,7 @@ require_once __DIR__ . '/includes/header.php';
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Previous</span>
                     </button>
+
                     <button class="carousel-control-next" type="button" data-bs-target="#homePromoCarousel" data-bs-slide="next">
                         <span class="carousel-control-next-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Next</span>
@@ -264,14 +321,17 @@ require_once __DIR__ . '/includes/header.php';
                 <strong><?php echo number_format($stats['open_trips']); ?></strong>
                 <span>Open Trips</span>
             </div>
+
             <div class="quick-stat-box">
                 <strong><?php echo number_format($stats['active_tours']); ?></strong>
                 <span>Tour Packages</span>
             </div>
+
             <div class="quick-stat-box">
                 <strong><?php echo number_format($stats['approved_companies']); ?></strong>
                 <span>Approved Companies</span>
             </div>
+
             <div class="quick-stat-box">
                 <strong><?php echo number_format($stats['tickets_issued']); ?></strong>
                 <span>Tickets Issued</span>
@@ -300,8 +360,7 @@ require_once __DIR__ . '/includes/header.php';
                         <?php
                             $companyName = (string) ($company['name'] ?? 'Bus Partner');
                             $companyType = (string) ($company['company_type'] ?? 'bus_company');
-                            $companyLogo = trim((string) ($company['logo'] ?? ''));
-                            $companyLogoUrl = company_logo_public_url($companyLogo);
+                            $companyLogoUrl = home_company_logo_url($company);
                             $companyDescription = company_short_description($company['description'] ?? null);
                             $companyRoute = trim((string) ($company['highlight_route'] ?? ''));
                             $companyAddress = trim((string) ($company['address'] ?? 'Myanmar'));
@@ -311,6 +370,7 @@ require_once __DIR__ . '/includes/header.php';
                             $startingPrice = (float) ($company['starting_price'] ?? 0);
 
                             $fallbackClass = '';
+
                             if ($index === 0) {
                                 $fallbackClass = 'is-active';
                             } elseif ($index === 1) {
@@ -360,22 +420,38 @@ require_once __DIR__ . '/includes/header.php';
 
                             <div class="bus-showcase-media">
                                 <?php if ($companyLogoUrl !== ''): ?>
-                                    <img src="<?php echo e($companyLogoUrl); ?>" alt="<?php echo e($companyName); ?> logo">
+                                    <img
+                                        src="<?php echo e($companyLogoUrl); ?>"
+                                        alt="<?php echo e($companyName); ?> logo"
+                                        style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                                    >
                                 <?php else: ?>
-                                    <div class="bus-showcase-placeholder"><?php echo e(company_initials($companyName)); ?></div>
+                                    <div class="bus-showcase-placeholder">
+                                        <?php echo e(company_initials($companyName)); ?>
+                                    </div>
                                 <?php endif; ?>
 
-                                <span class="bus-showcase-type-badge"><?php echo e(company_type_label($companyType)); ?></span>
-                                <span class="bus-showcase-status-badge"><?php echo e(company_status_label($company)); ?></span>
+                                <span class="bus-showcase-type-badge">
+                                    <?php echo e(company_type_label($companyType)); ?>
+                                </span>
+
+                                <span class="bus-showcase-status-badge">
+                                    <?php echo e(company_status_label($company)); ?>
+                                </span>
                             </div>
 
                             <div class="bus-showcase-body">
                                 <h3><?php echo e($companyName); ?></h3>
-                                <p class="bus-showcase-desc"><?php echo e($companyDescription); ?></p>
+
+                                <p class="bus-showcase-desc">
+                                    <?php echo e($companyDescription); ?>
+                                </p>
 
                                 <div class="bus-showcase-route">
                                     <i class="bi bi-sign-turn-right-fill"></i>
-                                    <span><?php echo e($companyRoute !== '' ? $companyRoute : 'Multiple active routes available'); ?></span>
+                                    <span>
+                                        <?php echo e($companyRoute !== '' ? $companyRoute : 'Multiple active routes available'); ?>
+                                    </span>
                                 </div>
 
                                 <div class="bus-showcase-meta-grid">
@@ -383,14 +459,17 @@ require_once __DIR__ . '/includes/header.php';
                                         <strong><?php echo number_format($activeBuses); ?></strong>
                                         <span>Active Buses</span>
                                     </div>
+
                                     <div class="bus-showcase-stat">
                                         <strong><?php echo number_format($activeRoutes); ?></strong>
                                         <span>Routes</span>
                                     </div>
+
                                     <div class="bus-showcase-stat">
                                         <strong><?php echo number_format($openTrips); ?></strong>
                                         <span>Open Trips</span>
                                     </div>
+
                                     <div class="bus-showcase-stat">
                                         <strong>
                                             <?php echo $startingPrice > 0 ? 'MMK ' . number_format($startingPrice, 0) : 'Contact'; ?>
@@ -447,6 +526,7 @@ require_once __DIR__ . '/includes/header.php';
                     <p class="mb-0">Choose route, trip date, company and seat layout with a cleaner customer flow.</p>
                 </div>
             </div>
+
             <div class="col-md-6 col-xl-3">
                 <div class="info-card h-100">
                     <div class="info-card-icon">💳</div>
@@ -454,6 +534,7 @@ require_once __DIR__ . '/includes/header.php';
                     <p>Upload payment proof and track verification status from your booking history.</p>
                 </div>
             </div>
+
             <div class="col-md-6 col-xl-3">
                 <div class="info-card h-100">
                     <div class="info-card-icon">🎫</div>
@@ -461,6 +542,7 @@ require_once __DIR__ . '/includes/header.php';
                     <p>Generate tickets and vouchers after approval for easier boarding and check-in.</p>
                 </div>
             </div>
+
             <div class="col-md-6 col-xl-3">
                 <div class="info-card h-100">
                     <div class="info-card-icon">📊</div>
@@ -519,6 +601,7 @@ require_once __DIR__ . '/includes/header.php';
                     <h3 class="mb-2">Search available trips or browse curated tour packages</h3>
                     <p class="mb-0 text-muted">Use the platform as a customer, or manage the system with admin dashboards.</p>
                 </div>
+
                 <div class="col-lg-4 text-lg-end">
                     <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn btn-brand me-2">Search Bus</a>
                     <a href="<?php echo BASE_URL; ?>tours.php" class="btn btn-nav-soft">Tours</a>
