@@ -218,10 +218,15 @@ function adminStatusBadgeClass(string $status): string
                         <div class="quick-link-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
                         <div class="quick-link-content"><h4>Refund Requests</h4><p>Handle refund approvals</p></div>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>admin/reports.php" class="quick-link-card">
-                        <div class="quick-link-icon"><i class="bi bi-bar-chart-line"></i></div>
-                        <div class="quick-link-content"><h4>Reports</h4><p>View business analytics</p></div>
-                    </a>
+<a href="<?php echo BASE_URL; ?>admin/business_reports.php" class="quick-link-card">
+    <div class="quick-link-icon">
+        <i class="bi bi-envelope-paper"></i>
+    </div>
+    <div class="quick-link-content">
+        <h4>Reports</h4>
+        <p>View business analytics</p>
+    </div>
+</a>
                     <a href="<?php echo BASE_URL; ?>admin/email_templates.php" class="quick-link-card">
                         <div class="quick-link-icon"><i class="bi bi-envelope-paper"></i></div>
                         <div class="quick-link-content"><h4>Email Templates</h4><p>Edit email layouts</p></div>
