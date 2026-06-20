@@ -80,7 +80,7 @@ require_once __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 
     <div class="row g-4">
-        <div class="col-lg-5">
+        <div class="col-lg-5" id="package-form">
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
                     <h5 class="fw-bold mb-3">
