@@ -37,10 +37,26 @@ if ($editId > 0) {
 
 $packages = [];
 $listSql = "
-    SELECT *
-    FROM tour_packages
-    WHERE company_id = ?
-    ORDER BY id DESC
+    SELECT
+        tp.*,
+        (
+            SELECT COUNT(*)
+            FROM tour_batches tb
+            WHERE tb.tour_package_id = tp.id
+              AND tb.status IN ('open', 'active')
+              AND tb.end_date >= CURDATE()
+              AND tb.capacity > tb.booked_count
+        ) AS open_batch_count,
+        (
+            SELECT COALESCE(SUM(GREATEST(tb.capacity - tb.booked_count, 0)), 0)
+            FROM tour_batches tb
+            WHERE tb.tour_package_id = tp.id
+              AND tb.status IN ('open', 'active')
+              AND tb.end_date >= CURDATE()
+        ) AS available_slots
+    FROM tour_packages tp
+    WHERE tp.company_id = ?
+    ORDER BY tp.id DESC
 ";
 $listStmt = $conn->prepare($listSql);
 $listStmt->bind_param('i', $company['company_id']);
@@ -139,6 +155,32 @@ require_once __DIR__ . '/../includes/header.php';
                             </div>
                         </div>
 
+                        <?php if (!$editPackage): ?>
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-6">
+                                    <label class="form-label">First Batch Start Date</label>
+                                    <input
+                                        type="date"
+                                        name="default_batch_start_date"
+                                        class="form-control"
+                                        value="<?php echo e(old('default_batch_start_date', date('Y-m-d', strtotime('+1 day')))); ?>"
+                                    >
+                                    <small class="text-muted">Optional. If empty, tomorrow will be used.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">First Batch Seats</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        name="default_batch_capacity"
+                                        class="form-control"
+                                        value="<?php echo e(old('default_batch_capacity', '20')); ?>"
+                                    >
+                                    <small class="text-muted">This makes the package bookable immediately.</small>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="mt-3 mb-3">
                             <label class="form-label">Hotel Info</label>
                             <textarea name="hotel_info" class="form-control" rows="2"><?php echo e($editPackage['hotel_info'] ?? old('hotel_info')); ?></textarea>
@@ -221,6 +263,8 @@ require_once __DIR__ . '/../includes/header.php';
                                         <th>Price</th>
                                         <th>Duration</th>
                                         <th>Status</th>
+                                        <th>Open Batches</th>
+                                        <th>Slots Left</th>
                                         <th style="min-width: 180px;">Actions</th>
                                     </tr>
                                 </thead>
@@ -241,6 +285,8 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <?php echo e(ucfirst($package['status'])); ?>
                                                 </span>
                                             </td>
+                                            <td><?php echo e((int)($package['open_batch_count'] ?? 0)); ?></td>
+                                            <td><?php echo e((int)($package['available_slots'] ?? 0)); ?></td>
                                             <td>
                                                 <div class="d-flex flex-wrap gap-2">
                                                     <a href="<?php echo BASE_URL; ?>tour_admin/packages.php?edit=<?php echo e($package['id']); ?>" class="btn btn-sm btn-outline-primary">

@@ -116,21 +116,31 @@ function fetch_public_tour_packages(mysqli $conn): array
                 SELECT COUNT(*)
                 FROM tour_batches tb
                 WHERE tb.{$packageColumn} = tp.id
-                  AND tb.status IN ('open', 'full', 'active')
+                  AND tb.status IN ('open', 'active')
                   AND tb.end_date >= CURDATE()
+                  AND tb.capacity > tb.booked_count
             ) AS total_batches,
             (
                 SELECT MIN(tb.price)
                 FROM tour_batches tb
                 WHERE tb.{$packageColumn} = tp.id
-                  AND tb.status IN ('open', 'full', 'active')
+                  AND tb.status IN ('open', 'active')
                   AND tb.end_date >= CURDATE()
+                  AND tb.capacity > tb.booked_count
             ) AS min_batch_price
         FROM tour_packages tp
         INNER JOIN companies c ON c.id = tp.company_id
         WHERE tp.status = 'active'
           AND c.status = 'approved'
           AND c.company_type IN ('tour_operator', 'both')
+          AND EXISTS (
+                SELECT 1
+                FROM tour_batches tb
+                WHERE tb.{$packageColumn} = tp.id
+                  AND tb.status IN ('open', 'active')
+                  AND tb.end_date >= CURDATE()
+                  AND tb.capacity > tb.booked_count
+          )
         ORDER BY tp.id DESC
     ";
 
@@ -183,8 +193,9 @@ function fetch_public_available_batches(mysqli $conn, int $packageId): array
         SELECT *
         FROM tour_batches
         WHERE {$packageColumn} = ?
-          AND status IN ('open', 'full', 'active')
+          AND status IN ('open', 'active')
           AND end_date >= CURDATE()
+          AND capacity > booked_count
         ORDER BY start_date ASC, id ASC
     ";
 

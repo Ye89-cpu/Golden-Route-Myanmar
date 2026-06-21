@@ -25,6 +25,14 @@ $passengerGenders = $_POST['passenger_gender'] ?? [];
 $passengerAges = $_POST['passenger_age'] ?? [];
 $passengerSpecialNotes = $_POST['passenger_special_note'] ?? [];
 
+$bulkFullName = trim($_POST['booking_full_name'] ?? '');
+$bulkPhone = trim($_POST['booking_phone'] ?? '');
+$bulkNrcPassport = trim($_POST['booking_nrc_passport'] ?? '');
+$bulkGender = trim($_POST['booking_gender'] ?? '');
+$bulkAge = trim($_POST['booking_age'] ?? '');
+$bulkSpecialNote = trim($_POST['booking_special_note'] ?? '');
+$passengerNamesText = trim($_POST['passenger_names_text'] ?? '');
+
 try {
     if ($tripId <= 0) {
         throw new Exception('Invalid trip selected.');
@@ -44,15 +52,6 @@ try {
 
     if (empty($selectedSeatIds)) {
         throw new Exception('Please select valid seats.');
-    }
-
-    if (
-        !is_array($passengerSeatIds) ||
-        !is_array($passengerFullNames) ||
-        count($passengerSeatIds) !== count($selectedSeatIds) ||
-        count($passengerFullNames) !== count($selectedSeatIds)
-    ) {
-        throw new Exception('Passenger details must match the number of selected seats.');
     }
 
     $conn->begin_transaction();
@@ -159,34 +158,74 @@ try {
     |--------------------------------------------------------------------------
     | Validate passenger mapping
     |--------------------------------------------------------------------------
+    | New bulk workflow: one contact passenger can book many seats quickly.
+    | Old detailed passenger arrays are still supported for backward compatibility.
     */
     $passengerMap = [];
 
-    for ($i = 0; $i < count($passengerSeatIds); $i++) {
-        $seatId = (int)$passengerSeatIds[$i];
-        $fullName = trim($passengerFullNames[$i] ?? '');
+    $usingBulkPassenger = $bulkFullName !== '' && (
+        !is_array($passengerFullNames) ||
+        count(array_filter(array_map('trim', $passengerFullNames))) !== count($selectedSeatIds)
+    );
 
-        if (!in_array($seatId, $selectedSeatIds, true)) {
-            throw new Exception('Passenger seat mapping is invalid.');
+    if ($usingBulkPassenger) {
+        if ($bulkGender !== '' && !in_array($bulkGender, ['male', 'female', 'other'], true)) {
+            throw new Exception('Invalid gender selected.');
         }
 
-        if ($fullName === '') {
-            throw new Exception('Each selected seat must have a passenger full name.');
+        if ($bulkAge !== '' && (!ctype_digit((string)$bulkAge) || (int)$bulkAge < 0)) {
+            throw new Exception('Passenger age must be a valid number.');
         }
 
-        if (isset($passengerMap[$seatId])) {
-            throw new Exception('Duplicate passenger information detected for a seat.');
+        $optionalNames = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $passengerNamesText))));
+        $index = 0;
+
+        foreach ($selectedSeatIds as $seatId) {
+            $seatNumber = (string)($seatRows[$seatId]['seat_number'] ?? '');
+            $name = $optionalNames[$index] ?? $bulkFullName;
+
+            $passengerMap[$seatId] = [
+                'seat_number'  => $seatNumber,
+                'full_name'    => $name,
+                'phone'        => $bulkPhone,
+                'nrc_passport' => $bulkNrcPassport,
+                'gender'       => $bulkGender,
+                'age'          => $bulkAge,
+                'special_note' => trim($bulkSpecialNote . ($seatNumber !== '' ? ' | Seat ' . $seatNumber : '')),
+            ];
+            $index++;
+        }
+    } else {
+        if (!is_array($passengerSeatIds) || !is_array($passengerFullNames)) {
+            throw new Exception('Passenger details must match the number of selected seats.');
         }
 
-        $passengerMap[$seatId] = [
-            'seat_number'  => trim($passengerSeatNumbers[$i] ?? ''),
-            'full_name'    => $fullName,
-            'phone'        => trim($passengerPhones[$i] ?? ''),
-            'nrc_passport' => trim($passengerNrcPassports[$i] ?? ''),
-            'gender'       => trim($passengerGenders[$i] ?? ''),
-            'age'          => trim($passengerAges[$i] ?? ''),
-            'special_note' => trim($passengerSpecialNotes[$i] ?? ''),
-        ];
+        for ($i = 0; $i < count($passengerSeatIds); $i++) {
+            $seatId = (int)$passengerSeatIds[$i];
+            $fullName = trim($passengerFullNames[$i] ?? '');
+
+            if (!in_array($seatId, $selectedSeatIds, true)) {
+                throw new Exception('Passenger seat mapping is invalid.');
+            }
+
+            if ($fullName === '') {
+                throw new Exception('Each selected seat must have a passenger full name.');
+            }
+
+            if (isset($passengerMap[$seatId])) {
+                throw new Exception('Duplicate passenger information detected for a seat.');
+            }
+
+            $passengerMap[$seatId] = [
+                'seat_number'  => trim($passengerSeatNumbers[$i] ?? ''),
+                'full_name'    => $fullName,
+                'phone'        => trim($passengerPhones[$i] ?? ''),
+                'nrc_passport' => trim($passengerNrcPassports[$i] ?? ''),
+                'gender'       => trim($passengerGenders[$i] ?? ''),
+                'age'          => trim($passengerAges[$i] ?? ''),
+                'special_note' => trim($passengerSpecialNotes[$i] ?? ''),
+            ];
+        }
     }
 
     foreach ($selectedSeatIds as $seatId) {
@@ -411,11 +450,11 @@ try {
 
     $conn->close();
 
-    set_flash(
-        'success',
-        'Booking created successfully. Booking Code: ' . $bookingCode .
-        '. Status: pending. Payment status: unpaid.'
-    );
+    $successMessage = 'Booking created successfully. Booking Code: ' . $bookingCode . '. Status: pending. Payment status: unpaid.';
+    if ($passengerCount >= 3) {
+        $successMessage .= ' Reminder: Please bring NRC / ID card for all passengers.';
+    }
+    set_flash('success', $successMessage);
     redirect('customer/profile.php');
 
 } catch (Throwable $e) {

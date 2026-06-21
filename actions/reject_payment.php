@@ -71,7 +71,7 @@ try {
 
     $updateBookingSql = "
         UPDATE bookings
-        SET payment_status = 'rejected'
+        SET payment_status = 'failed'
         WHERE id = ?
     ";
     $updateBookingStmt = $conn->prepare($updateBookingSql);

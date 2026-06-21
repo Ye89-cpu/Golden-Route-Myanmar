@@ -165,6 +165,11 @@ require_once __DIR__ . '/../includes/header.php';
                     && ($row['booking_status'] ?? '') !== 'cancelled'
                     && !in_array((string)($row['refund_request_status'] ?? ''), ['pending', 'approved'], true)
                 );
+
+                $canCancelBooking = (
+                    ($row['booking_status'] ?? '') !== 'cancelled'
+                    && in_array((string)($row['payment_status'] ?? ''), ['unpaid', 'pending_review', 'failed'], true)
+                );
                 ?>
                 <div class="col-12">
                     <div class="card border-0 shadow-sm rounded-4">
@@ -235,7 +240,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 </div>
 
                                 <div class="d-flex flex-column gap-2" style="min-width: 230px;">
-                                    <?php if (in_array($row['payment_status'], ['unpaid', 'failed', 'rejected'], true)): ?>
+                                    <?php if (in_array($row['payment_status'], ['unpaid', 'failed'], true)): ?>
                                         <a href="<?php echo BASE_URL; ?>payment.php?booking_id=<?php echo e($row['booking_id']); ?>" class="btn btn-warning">
                                             Pay Now
                                         </a>
@@ -243,6 +248,15 @@ require_once __DIR__ . '/../includes/header.php';
                                         <a href="<?php echo BASE_URL; ?>payment.php?booking_id=<?php echo e($row['booking_id']); ?>" class="btn btn-outline-warning">
                                             View Payment Submission
                                         </a>
+                                    <?php endif; ?>
+
+                                    <?php if ($canCancelBooking): ?>
+                                        <form action="<?php echo BASE_URL; ?>actions/cancel_booking.php" method="POST" onsubmit="return confirm('Cancel this booking and release seats/slots?');">
+                                            <input type="hidden" name="booking_id" value="<?php echo e($row['booking_id']); ?>">
+                                            <button type="submit" class="btn btn-outline-danger w-100">
+                                                Cancel Booking
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
 
                                     <?php if ($row['booking_type'] === 'bus'): ?>

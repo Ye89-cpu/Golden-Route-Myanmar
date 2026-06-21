@@ -181,9 +181,148 @@ if ($isSubmitted) {
         $searchResult = $searchStmt->get_result();
 
         while ($row = $searchResult->fetch_assoc()) {
+            $row['is_multi_hop'] = false;
             $results[] = $row;
         }
         $searchStmt->close();
+
+        /*
+         * If there is no direct trip, look for one transfer route.
+         * Example: Mandalay → Yangon and Yangon → Pathein.
+         */
+        if (empty($results)) {
+            if ($selectedCompanyId > 0) {
+                $multiSql = "
+                    SELECT
+                        t1.id AS leg1_trip_id,
+                        t1.trip_date AS leg1_trip_date,
+                        t1.departure_datetime AS leg1_departure_datetime,
+                        t1.arrival_datetime AS leg1_arrival_datetime,
+                        t1.price AS leg1_price,
+                        t1.available_seats AS leg1_available_seats,
+                        c1.name AS leg1_company_name,
+                        b1.bus_number AS leg1_bus_number,
+                        b1.bus_type AS leg1_bus_type,
+                        b1.layout_type AS leg1_layout_type,
+                        fc.name AS from_city_name,
+                        mc.name AS transfer_city_name,
+
+                        t2.id AS leg2_trip_id,
+                        t2.trip_date AS leg2_trip_date,
+                        t2.departure_datetime AS leg2_departure_datetime,
+                        t2.arrival_datetime AS leg2_arrival_datetime,
+                        t2.price AS leg2_price,
+                        t2.available_seats AS leg2_available_seats,
+                        c2.name AS leg2_company_name,
+                        b2.bus_number AS leg2_bus_number,
+                        b2.bus_type AS leg2_bus_type,
+                        b2.layout_type AS leg2_layout_type,
+                        tc.name AS to_city_name
+                    FROM trips t1
+                    INNER JOIN routes r1 ON r1.id = t1.route_id
+                    INNER JOIN companies c1 ON c1.id = t1.company_id
+                    INNER JOIN buses b1 ON b1.id = t1.bus_id
+                    INNER JOIN cities fc ON fc.id = r1.from_city_id
+                    INNER JOIN cities mc ON mc.id = r1.to_city_id
+                    INNER JOIN routes r2 ON r2.from_city_id = r1.to_city_id
+                    INNER JOIN trips t2 ON t2.route_id = r2.id
+                    INNER JOIN companies c2 ON c2.id = t2.company_id
+                    INNER JOIN buses b2 ON b2.id = t2.bus_id
+                    INNER JOIN cities tc ON tc.id = r2.to_city_id
+                    WHERE t1.trip_date = ?
+                      AND t2.trip_date = ?
+                      AND r1.from_city_id = ?
+                      AND r2.to_city_id = ?
+                      AND t1.company_id = ?
+                      AND t2.company_id = ?
+                      AND t1.status = 'open'
+                      AND t2.status = 'open'
+                      AND r1.status = 'active'
+                      AND r2.status = 'active'
+                      AND c1.status = 'approved'
+                      AND c2.status = 'approved'
+                      AND b1.status = 'active'
+                      AND b2.status = 'active'
+                      AND t1.available_seats > 0
+                      AND t2.available_seats > 0
+                      AND t2.departure_datetime >= t1.arrival_datetime
+                    ORDER BY t1.departure_datetime ASC, t2.departure_datetime ASC
+                    LIMIT 12
+                ";
+                $multiStmt = $conn->prepare($multiSql);
+                $multiStmt->bind_param('ssiiii', $travelDate, $travelDate, $fromCityId, $toCityId, $selectedCompanyId, $selectedCompanyId);
+            } else {
+                $multiSql = "
+                    SELECT
+                        t1.id AS leg1_trip_id,
+                        t1.trip_date AS leg1_trip_date,
+                        t1.departure_datetime AS leg1_departure_datetime,
+                        t1.arrival_datetime AS leg1_arrival_datetime,
+                        t1.price AS leg1_price,
+                        t1.available_seats AS leg1_available_seats,
+                        c1.name AS leg1_company_name,
+                        b1.bus_number AS leg1_bus_number,
+                        b1.bus_type AS leg1_bus_type,
+                        b1.layout_type AS leg1_layout_type,
+                        fc.name AS from_city_name,
+                        mc.name AS transfer_city_name,
+
+                        t2.id AS leg2_trip_id,
+                        t2.trip_date AS leg2_trip_date,
+                        t2.departure_datetime AS leg2_departure_datetime,
+                        t2.arrival_datetime AS leg2_arrival_datetime,
+                        t2.price AS leg2_price,
+                        t2.available_seats AS leg2_available_seats,
+                        c2.name AS leg2_company_name,
+                        b2.bus_number AS leg2_bus_number,
+                        b2.bus_type AS leg2_bus_type,
+                        b2.layout_type AS leg2_layout_type,
+                        tc.name AS to_city_name
+                    FROM trips t1
+                    INNER JOIN routes r1 ON r1.id = t1.route_id
+                    INNER JOIN companies c1 ON c1.id = t1.company_id
+                    INNER JOIN buses b1 ON b1.id = t1.bus_id
+                    INNER JOIN cities fc ON fc.id = r1.from_city_id
+                    INNER JOIN cities mc ON mc.id = r1.to_city_id
+                    INNER JOIN routes r2 ON r2.from_city_id = r1.to_city_id
+                    INNER JOIN trips t2 ON t2.route_id = r2.id
+                    INNER JOIN companies c2 ON c2.id = t2.company_id
+                    INNER JOIN buses b2 ON b2.id = t2.bus_id
+                    INNER JOIN cities tc ON tc.id = r2.to_city_id
+                    WHERE t1.trip_date = ?
+                      AND t2.trip_date = ?
+                      AND r1.from_city_id = ?
+                      AND r2.to_city_id = ?
+                      AND t1.status = 'open'
+                      AND t2.status = 'open'
+                      AND r1.status = 'active'
+                      AND r2.status = 'active'
+                      AND c1.status = 'approved'
+                      AND c2.status = 'approved'
+                      AND b1.status = 'active'
+                      AND b2.status = 'active'
+                      AND t1.available_seats > 0
+                      AND t2.available_seats > 0
+                      AND t2.departure_datetime >= t1.arrival_datetime
+                    ORDER BY t1.departure_datetime ASC, t2.departure_datetime ASC
+                    LIMIT 12
+                ";
+                $multiStmt = $conn->prepare($multiSql);
+                $multiStmt->bind_param('ssii', $travelDate, $travelDate, $fromCityId, $toCityId);
+            }
+
+            if ($multiStmt) {
+                $multiStmt->execute();
+                $multiResult = $multiStmt->get_result();
+                while ($row = $multiResult->fetch_assoc()) {
+                    $row['is_multi_hop'] = true;
+                    $row['total_price'] = (float)$row['leg1_price'] + (float)$row['leg2_price'];
+                    $row['available_seats'] = min((int)$row['leg1_available_seats'], (int)$row['leg2_available_seats']);
+                    $results[] = $row;
+                }
+                $multiStmt->close();
+            }
+        }
     }
 }
 
@@ -320,20 +459,40 @@ require_once __DIR__ . '/includes/header.php';
             <div class="row g-4">
                 <?php foreach ($results as $trip): ?>
                     <?php
-                    $departureTime = date('H:i', strtotime($trip['departure_datetime']));
-                    $arrivalTime = date('H:i', strtotime($trip['arrival_datetime']));
-                    $tripDateFormatted = date('Y-m-d', strtotime($trip['trip_date']));
-                    $availableSeats = (int)$trip['available_seats'];
-                    $isSoldOut = $availableSeats <= 0;
+                    $isMultiHop = !empty($trip['is_multi_hop']);
+
+                    if ($isMultiHop) {
+                        $departureTime = date('H:i', strtotime($trip['leg1_departure_datetime']));
+                        $arrivalTime = date('H:i', strtotime($trip['leg2_arrival_datetime']));
+                        $tripDateFormatted = date('Y-m-d', strtotime($trip['leg1_trip_date']));
+                        $availableSeats = min((int)$trip['leg1_available_seats'], (int)$trip['leg2_available_seats']);
+                        $isSoldOut = $availableSeats <= 0;
+                        $displayPrice = (float)$trip['total_price'];
+                        $checkoutUrl = BASE_URL . 'checkout_multi.php?trip1_id=' . (int)$trip['leg1_trip_id'] . '&trip2_id=' . (int)$trip['leg2_trip_id'];
+                    } else {
+                        $departureTime = date('H:i', strtotime($trip['departure_datetime']));
+                        $arrivalTime = date('H:i', strtotime($trip['arrival_datetime']));
+                        $tripDateFormatted = date('Y-m-d', strtotime($trip['trip_date']));
+                        $availableSeats = (int)$trip['available_seats'];
+                        $isSoldOut = $availableSeats <= 0;
+                        $displayPrice = (float)$trip['price'];
+                        $checkoutUrl = BASE_URL . 'checkout.php?trip_id=' . (int)$trip['trip_id'];
+                    }
                     ?>
                     <div class="col-12">
                         <div class="trip-result-card">
                             <div class="row g-4 align-items-center">
                                 <div class="col-lg-7">
                                     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                        <span class="soft-badge"><?php echo e($trip['company_name']); ?></span>
-                                        <span class="soft-badge"><?php echo e(ucwords(str_replace('_', ' ', $trip['bus_type']))); ?></span>
-                                        <span class="soft-badge"><?php echo e(strtoupper($trip['layout_type'])); ?> Layout</span>
+                                        <?php if ($isMultiHop): ?>
+                                            <span class="soft-badge">2-step route</span>
+                                            <span class="soft-badge"><?php echo e($trip['leg1_company_name']); ?></span>
+                                            <span class="soft-badge"><?php echo e($trip['leg2_company_name']); ?></span>
+                                        <?php else: ?>
+                                            <span class="soft-badge"><?php echo e($trip['company_name']); ?></span>
+                                            <span class="soft-badge"><?php echo e(ucwords(str_replace('_', ' ', $trip['bus_type']))); ?></span>
+                                            <span class="soft-badge"><?php echo e(strtoupper($trip['layout_type'])); ?> Layout</span>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="trip-route-line mb-3">
@@ -342,6 +501,13 @@ require_once __DIR__ . '/includes/header.php';
                                             <strong><?php echo e($trip['from_city_name']); ?></strong>
                                         </div>
                                         <div class="trip-route-arrow">→</div>
+                                        <?php if ($isMultiHop): ?>
+                                            <div class="text-center">
+                                                <small>Transfer</small>
+                                                <strong><?php echo e($trip['transfer_city_name']); ?></strong>
+                                            </div>
+                                            <div class="trip-route-arrow">→</div>
+                                        <?php endif; ?>
                                         <div class="text-end">
                                             <small>To</small>
                                             <strong><?php echo e($trip['to_city_name']); ?></strong>
@@ -363,15 +529,26 @@ require_once __DIR__ . '/includes/header.php';
                                         </div>
                                         <div class="trip-meta-box">
                                             <span>Bus</span>
-                                            <strong><?php echo e($trip['bus_number']); ?></strong>
+                                            <?php if ($isMultiHop): ?>
+                                                <strong><?php echo e($trip['leg1_bus_number']); ?> + <?php echo e($trip['leg2_bus_number']); ?></strong>
+                                            <?php else: ?>
+                                                <strong><?php echo e($trip['bus_number']); ?></strong>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
+
+                                    <?php if ($isMultiHop): ?>
+                                        <div class="alert alert-info rounded-4 mt-3 mb-0">
+                                            No direct bus found. This option books both legs together:
+                                            <?php echo e($trip['from_city_name']); ?> → <?php echo e($trip['transfer_city_name']); ?> → <?php echo e($trip['to_city_name']); ?>.
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="col-lg-5">
                                     <div class="trip-price-panel">
-                                        <div class="trip-price-label">Ticket Price</div>
-                                        <div class="trip-price-value"><?php echo number_format((float)$trip['price'], 2); ?> MMK</div>
+                                        <div class="trip-price-label"><?php echo $isMultiHop ? 'Combined Price' : 'Ticket Price'; ?></div>
+                                        <div class="trip-price-value"><?php echo number_format($displayPrice, 2); ?> MMK</div>
 
                                         <div class="mt-3 mb-4">
                                             <?php if ($isSoldOut): ?>
@@ -384,8 +561,8 @@ require_once __DIR__ . '/includes/header.php';
                                         <?php if ($isSoldOut): ?>
                                             <button type="button" class="btn btn-secondary w-100" disabled>Sold Out</button>
                                         <?php else: ?>
-                                            <a href="<?php echo BASE_URL; ?>checkout.php?trip_id=<?php echo e($trip['trip_id']); ?>" class="btn btn-brand w-100">
-                                                Choose Seats / Checkout
+                                            <a href="<?php echo e($checkoutUrl); ?>" class="btn btn-brand w-100">
+                                                <?php echo $isMultiHop ? 'Choose Seats for Both Buses' : 'Choose Seats / Checkout'; ?>
                                             </a>
                                         <?php endif; ?>
                                     </div>

@@ -190,7 +190,7 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="panel-card h-100">
                             <div class="panel-card-header">
                                 <h4>Passenger Details</h4>
-                                <p>Complete one passenger form for each selected seat.</p>
+                                <p>Fill one contact passenger only. The system will create ticket records for all selected seats.</p>
                             </div>
 
                             <div class="booking-totals-box mb-3">
@@ -206,9 +206,48 @@ require_once __DIR__ . '/includes/header.php';
 
                             <div id="selectedSeatList" class="selected-seat-list mb-3"></div>
 
-                            <div id="passengerFormsContainer" class="passenger-forms-stack">
-                                <div class="empty-inline-box">Choose seats to generate passenger forms.</div>
+                            <div id="bulkPassengerNotice" class="alert alert-info rounded-4 mb-3" style="display:none;"></div>
+
+                            <div class="passenger-theme-card">
+                                <h6 class="mb-3">Main Contact / Booker</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Full Name</label>
+                                        <input type="text" name="booking_full_name" class="form-control" value="<?php echo e($currentUser['name'] ?? ''); ?>" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Phone</label>
+                                        <input type="text" name="booking_phone" class="form-control" value="<?php echo e($currentUser['phone'] ?? ''); ?>">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">NRC / Passport</label>
+                                        <input type="text" name="booking_nrc_passport" class="form-control">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Gender</label>
+                                        <select name="booking_gender" class="form-select">
+                                            <option value="">Select</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Age</label>
+                                        <input type="number" min="0" name="booking_age" class="form-control">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Passenger Names (optional)</label>
+                                        <textarea name="passenger_names_text" class="form-control" rows="4" placeholder="Optional. One passenger name per line. If left blank, main contact name will be used for all selected seats."></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Special Note</label>
+                                        <input type="text" name="booking_special_note" class="form-control">
+                                    </div>
+                                </div>
                             </div>
+
+                            <div id="passengerFormsContainer" class="passenger-forms-stack d-none"></div>
 
                             <div class="mt-3">
                                 <label class="form-label">Customer Note</label>
@@ -258,9 +297,12 @@ require_once __DIR__ . '/includes/header.php';
                     selectedSeatCount.textContent = seats.length;
                     selectedTotalAmount.textContent = (seats.length * seatPrice).toFixed(2) + ' MMK';
 
+                    const bulkNotice = document.getElementById('bulkPassengerNotice');
+
                     if (!seats.length) {
                         selectedSeatList.innerHTML = '';
-                        passengerFormsContainer.innerHTML = '<div class="empty-inline-box">Choose seats to generate passenger forms.</div>';
+                        passengerFormsContainer.innerHTML = '';
+                        bulkNotice.style.display = 'none';
                         return;
                     }
 
@@ -268,48 +310,18 @@ require_once __DIR__ . '/includes/header.php';
                         '<span class="selected-seat-pill">' + escapeHtml(seat.number) + '</span>'
                     ).join('');
 
-                    passengerFormsContainer.innerHTML = seats.map((seat, index) => `
-                        <div class="passenger-theme-card">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="mb-0">Passenger ${index + 1}</h6>
-                                <span class="soft-badge">${escapeHtml(seat.number)}</span>
-                            </div>
+                    bulkNotice.style.display = 'block';
+                    if (seats.length >= 3) {
+                        bulkNotice.className = 'alert alert-warning rounded-4 mb-3';
+                        bulkNotice.innerHTML = '⚠️ 3 ယောက်နှင့်အထက် booking ဖြစ်သောကြောင့် ကားစီးချိန်တွင် NRC / ID card ယူလာရန် သတိပေးပါ။';
+                    } else {
+                        bulkNotice.className = 'alert alert-info rounded-4 mb-3';
+                        bulkNotice.innerHTML = 'Selected seats: ' + seats.length + '. One contact detail is enough for this booking.';
+                    }
 
-                            <input type="hidden" name="passenger_seat_id[]" value="${escapeHtml(seat.id)}">
-                            <input type="hidden" name="passenger_seat_number[]" value="${escapeHtml(seat.number)}">
-
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Full Name</label>
-                                    <input type="text" name="passenger_full_name[]" class="form-control" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Phone</label>
-                                    <input type="text" name="passenger_phone[]" class="form-control">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">NRC / Passport</label>
-                                    <input type="text" name="passenger_nrc_passport[]" class="form-control">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Gender</label>
-                                    <select name="passenger_gender[]" class="form-select">
-                                        <option value="">Select</option>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Age</label>
-                                    <input type="number" min="0" name="passenger_age[]" class="form-control">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Special Note</label>
-                                    <input type="text" name="passenger_special_note[]" class="form-control">
-                                </div>
-                            </div>
-                        </div>
+                    passengerFormsContainer.innerHTML = seats.map((seat) => `
+                        <input type="hidden" name="passenger_seat_id[]" value="${escapeHtml(seat.id)}">
+                        <input type="hidden" name="passenger_seat_number[]" value="${escapeHtml(seat.number)}">
                     `).join('');
                 }
 
