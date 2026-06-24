@@ -78,6 +78,19 @@ $paymentMethods = [
     'bank_transfer' => 'Bank Transfer',
 ];
 
+$paymentQrImage = 'assets/images/QR1.png';
+$paymentQrImageFs = __DIR__ . '/' . $paymentQrImage;
+$paymentQrImageUrl = file_exists($paymentQrImageFs)
+    ? BASE_URL . $paymentQrImage
+    : '';
+
+$paymentMethodNotes = [
+    'wave_money' => 'Scan this QR with Wave Money and upload the transfer screenshot.',
+    'kbzpay' => 'Scan this QR with KBZ Pay and upload the transfer screenshot.',
+    'bank_transfer' => 'Transfer to the account shown in the QR / account details and upload the proof.',
+    'cash' => 'Cash payment does not need QR scan. Please submit payment after office confirmation.',
+];
+
 function payment_badge_class(string $status): string
 {
     switch ($status) {
@@ -197,6 +210,34 @@ require_once __DIR__ . '/includes/header.php';
                     <?php if ($formBlocked): ?>
                         <div class="alert alert-warning mb-0"><?php echo e($blockMessage); ?></div>
                     <?php else: ?>
+                        <div class="payment-qr-box mb-4 p-3 rounded-4 border bg-light">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-md-4 text-center">
+                                    <?php if ($paymentQrImageUrl !== ''): ?>
+                                        <img
+                                            src="<?php echo e($paymentQrImageUrl); ?>"
+                                            alt="Payment QR Code"
+                                            class="img-fluid rounded-3 border bg-white p-2"
+                                            style="max-width: 180px;"
+                                        >
+                                    <?php else: ?>
+                                        <div class="alert alert-warning mb-0">QR image not found.</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="col-md-8">
+                                    <h5 class="mb-2">Scan QR to Pay</h5>
+                                    <p class="text-muted mb-2" id="paymentQrNote">
+                                        Select a payment method, scan this QR, then upload the payment screenshot.
+                                    </p>
+                                    <div class="small">
+                                        <div><strong>Amount:</strong> <?php echo e(number_format((float)$booking['total_amount'], 2)); ?> MMK</div>
+                                        <div><strong>Booking Code:</strong> <?php echo e($booking['booking_code']); ?></div>
+                                        <div><strong>Transaction Ref:</strong> Please enter transaction ID after transfer.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <form action="<?php echo BASE_URL; ?>actions/submit_payment.php" method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="booking_id" value="<?php echo e($booking['id']); ?>">
 
@@ -244,5 +285,21 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+const paymentMethodNotes = <?php echo json_encode($paymentMethodNotes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
+const paymentQrNote = document.getElementById('paymentQrNote');
+
+if (paymentMethodSelect && paymentQrNote) {
+    const updatePaymentQrNote = () => {
+        const selectedMethod = paymentMethodSelect.value;
+        paymentQrNote.textContent = paymentMethodNotes[selectedMethod] || 'Select a payment method, scan this QR, then upload the payment screenshot.';
+    };
+
+    paymentMethodSelect.addEventListener('change', updatePaymentQrNote);
+    updatePaymentQrNote();
+}
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
