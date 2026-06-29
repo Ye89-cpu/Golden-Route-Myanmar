@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
+require_once __DIR__ . '/../includes/seat_layout_helper.php';
 
 require_role('bus_admin');
 
@@ -10,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $conn = getDBConnection();
+require_company_permission($conn, 'manage_buses');
 $company = require_bus_admin_company($conn);
 
 $busNumber = trim($_POST['bus_number'] ?? '');
@@ -115,6 +118,13 @@ if ($stmt->execute()) {
     $newBusId = $stmt->insert_id;
     $stmt->close();
 
+    $seatLayoutWarning = '';
+    try {
+        ensure_bus_seat_layout($conn, (int)$newBusId);
+    } catch (Throwable $seatError) {
+        $seatLayoutWarning = ' Seat layout could not be generated automatically. Open Seat Layout and generate it manually.';
+    }
+
     $action = 'bus_created';
     $entityType = 'bus';
     $description = 'Created bus: ' . $busNumber;
@@ -132,7 +142,7 @@ if ($stmt->execute()) {
 
     $conn->close();
     clear_old_input();
-    set_flash('success', 'Bus created successfully.');
+    set_flash('success', 'Bus created successfully.' . $seatLayoutWarning);
     redirect('bus_admin/buses.php');
 }
 

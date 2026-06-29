@@ -356,3 +356,225 @@ function report_payment_badge_class(string $status): string
             return 'secondary';
     }
 }
+function report_fetch_tour_company_summary(mysqli $conn, int $companyId, string $startDate, string $endDate): array
+{
+    $summary = [
+        'total_bookings' => 0,
+        'paid_bookings' => 0,
+        'pending_review_bookings' => 0,
+        'cancelled_bookings' => 0,
+        'refunded_bookings' => 0,
+        'gross_revenue' => 0.0,
+        'refunded_amount' => 0.0,
+        'total_payments' => 0,
+        'submitted_payments' => 0,
+        'verified_payments' => 0,
+        'rejected_payments' => 0,
+        'verified_payment_amount' => 0.0,
+        'tour_batch_count' => 0,
+        'tour_capacity' => 0,
+        'tour_sold_slots' => 0,
+        'tour_utilization_percent' => 0.0,
+    ];
+
+    $bookingSql = "
+        SELECT
+            COUNT(*) AS total_bookings,
+            COALESCE(SUM(b.payment_status = 'paid'), 0) AS paid_bookings,
+            COALESCE(SUM(b.payment_status = 'pending_review'), 0) AS pending_review_bookings,
+            COALESCE(SUM(b.status = 'cancelled'), 0) AS cancelled_bookings,
+            COALESCE(SUM(b.payment_status = 'refunded'), 0) AS refunded_bookings,
+            COALESCE(SUM(CASE WHEN b.payment_status = 'paid' THEN b.total_amount ELSE 0 END), 0) AS gross_revenue,
+            COALESCE(SUM(CASE WHEN b.payment_status = 'refunded' THEN b.total_amount ELSE 0 END), 0) AS refunded_amount
+        FROM bookings b
+        INNER JOIN tour_batches tb ON tb.id = b.tour_batch_id
+        WHERE b.booking_type = 'tour'
+          AND tb.company_id = ?
+          AND DATE(COALESCE(b.booked_at, b.created_at)) BETWEEN ? AND ?
+    ";
+    $stmt = $conn->prepare($bookingSql);
+    $stmt->bind_param('iss', $companyId, $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $summary = array_merge($summary, $row);
+    }
+    $stmt->close();
+
+    $paymentSql = "
+        SELECT
+            COUNT(*) AS total_payments,
+            COALESCE(SUM(p.status = 'submitted'), 0) AS submitted_payments,
+            COALESCE(SUM(p.status = 'verified'), 0) AS verified_payments,
+            COALESCE(SUM(p.status = 'rejected'), 0) AS rejected_payments,
+            COALESCE(SUM(CASE WHEN p.status = 'verified' THEN p.amount ELSE 0 END), 0) AS verified_payment_amount
+        FROM payments p
+        INNER JOIN bookings b ON b.id = p.booking_id
+        INNER JOIN tour_batches tb ON tb.id = b.tour_batch_id
+        WHERE b.booking_type = 'tour'
+          AND tb.company_id = ?
+          AND DATE(p.created_at) BETWEEN ? AND ?
+    ";
+    $stmt = $conn->prepare($paymentSql);
+    $stmt->bind_param('iss', $companyId, $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $summary = array_merge($summary, $row);
+    }
+    $stmt->close();
+
+    $capacitySql = "
+        SELECT
+            COUNT(*) AS tour_batch_count,
+            COALESCE(SUM(capacity), 0) AS tour_capacity
+        FROM tour_batches
+        WHERE company_id = ?
+          AND start_date BETWEEN ? AND ?
+          AND status <> 'cancelled'
+    ";
+    $stmt = $conn->prepare($capacitySql);
+    $stmt->bind_param('iss', $companyId, $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $summary['tour_batch_count'] = (int)($row['tour_batch_count'] ?? 0);
+        $summary['tour_capacity'] = (int)($row['tour_capacity'] ?? 0);
+    }
+    $stmt->close();
+
+    $soldSql = "
+        SELECT
+            COALESCE(SUM(b.passenger_count), 0) AS tour_sold_slots
+        FROM bookings b
+        INNER JOIN tour_batches tb ON tb.id = b.tour_batch_id
+        WHERE b.booking_type = 'tour'
+          AND b.payment_status = 'paid'
+          AND tb.company_id = ?
+          AND tb.start_date BETWEEN ? AND ?
+    ";
+    $stmt = $conn->prepare($soldSql);
+    $stmt->bind_param('iss', $companyId, $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $summary['tour_sold_slots'] = (int)($row['tour_sold_slots'] ?? 0);
+    }
+    $stmt->close();
+
+    if ((int)$summary['tour_capacity'] > 0) {
+        $summary['tour_utilization_percent'] = round(((int)$summary['tour_sold_slots'] / (int)$summary['tour_capacity']) * 100, 2);
+    }
+
+    return $summary;
+}
+
+function report_fetch_tour_company_package_breakdown(mysqli $conn, int $companyId, string $startDate, string $endDate, int $limit = 20): array
+{
+    $limit = max(1, min($limit, 100));
+    $sql = "
+        SELECT
+            tp.title AS package_title,
+            COUNT(DISTINCT b.id) AS booking_count,
+            COALESCE(SUM(CASE WHEN b.payment_status = 'paid' THEN b.passenger_count ELSE 0 END), 0) AS passengers,
+            COALESCE(SUM(CASE WHEN b.payment_status = 'paid' THEN b.total_amount ELSE 0 END), 0) AS revenue,
+            COALESCE(SUM(CASE WHEN b.payment_status = 'pending_review' THEN 1 ELSE 0 END), 0) AS pending_review
+        FROM tour_packages tp
+        LEFT JOIN tour_batches tb ON tb.tour_package_id = tp.id
+        LEFT JOIN bookings b
+            ON b.tour_batch_id = tb.id
+           AND b.booking_type = 'tour'
+           AND DATE(COALESCE(b.booked_at, b.created_at)) BETWEEN ? AND ?
+        WHERE tp.company_id = ?
+        GROUP BY tp.id, tp.title
+        ORDER BY revenue DESC, booking_count DESC, tp.title ASC
+        LIMIT {$limit}
+    ";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ssi', $startDate, $endDate, $companyId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+    return $rows;
+}
+
+function report_fetch_tour_company_recent_bookings(mysqli $conn, int $companyId, string $startDate, string $endDate, int $limit = 100): array
+{
+    $limit = max(1, min($limit, 200));
+    $sql = "
+        SELECT
+            b.id,
+            b.booking_code,
+            b.passenger_count,
+            b.total_amount,
+            b.status AS booking_status,
+            b.payment_status,
+            COALESCE(b.booked_at, b.created_at) AS booked_at,
+            u.name AS customer_name,
+            u.email AS customer_email,
+            tp.title AS package_title,
+            tb.start_date,
+            tb.end_date
+        FROM bookings b
+        INNER JOIN users u ON u.id = b.user_id
+        INNER JOIN tour_batches tb ON tb.id = b.tour_batch_id
+        INNER JOIN tour_packages tp ON tp.id = tb.tour_package_id
+        WHERE b.booking_type = 'tour'
+          AND tb.company_id = ?
+          AND DATE(COALESCE(b.booked_at, b.created_at)) BETWEEN ? AND ?
+        ORDER BY b.id DESC
+        LIMIT {$limit}
+    ";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('iss', $companyId, $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+    return $rows;
+}
+
+function report_fetch_tour_company_recent_payments(mysqli $conn, int $companyId, string $startDate, string $endDate, int $limit = 50): array
+{
+    $limit = max(1, min($limit, 100));
+    $sql = "
+        SELECT
+            p.id,
+            p.amount,
+            p.payment_method,
+            p.transaction_ref,
+            p.status,
+            p.created_at,
+            b.booking_code,
+            u.name AS customer_name,
+            u.email AS customer_email,
+            tp.title AS package_title
+        FROM payments p
+        INNER JOIN bookings b ON b.id = p.booking_id
+        INNER JOIN users u ON u.id = b.user_id
+        INNER JOIN tour_batches tb ON tb.id = b.tour_batch_id
+        INNER JOIN tour_packages tp ON tp.id = tb.tour_package_id
+        WHERE b.booking_type = 'tour'
+          AND tb.company_id = ?
+          AND DATE(p.created_at) BETWEEN ? AND ?
+        ORDER BY p.id DESC
+        LIMIT {$limit}
+    ";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('iss', $companyId, $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+    return $rows;
+}

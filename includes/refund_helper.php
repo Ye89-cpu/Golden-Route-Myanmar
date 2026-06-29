@@ -222,3 +222,39 @@ function fetch_refund_request_for_admin_update(mysqli $conn, int $refundRequestI
 
     return $row;
 }
+function fetch_refund_request_for_tour_admin_update(mysqli $conn, int $refundRequestId, int $companyId): ?array
+{
+    $sql = "
+        SELECT
+            rr.*,
+            b.booking_code,
+            b.booking_type,
+            b.trip_id,
+            b.tour_batch_id,
+            b.passenger_count,
+            b.total_amount,
+            b.status AS booking_status,
+            b.payment_status,
+            tb.company_id AS company_id
+        FROM refund_requests rr
+        INNER JOIN bookings b ON b.id = rr.booking_id
+        INNER JOIN tour_batches tb ON tb.id = b.tour_batch_id
+        WHERE rr.id = ?
+          AND b.booking_type = 'tour'
+          AND tb.company_id = ?
+        LIMIT 1
+        FOR UPDATE
+    ";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception('Failed to prepare tour admin refund query: ' . $conn->error);
+    }
+
+    $stmt->bind_param('ii', $refundRequestId, $companyId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc() ?: null;
+    $stmt->close();
+
+    return $row;
+}

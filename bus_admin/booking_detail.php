@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
 require_once __DIR__ . '/../includes/bus_booking_helper.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('bus_admin');
 
@@ -13,7 +14,9 @@ if ($bookingId <= 0) {
 }
 
 $conn = getDBConnection();
+require_company_permission($conn, 'manage_bookings');
 $company = require_bus_admin_company($conn);
+$canApproveBookings = user_has_company_permission($conn, 'approve_bookings');
 
 try {
     $booking = fetch_bus_admin_booking_detail($conn, (int)$company['company_id'], $bookingId);
@@ -135,7 +138,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="mb-2"><strong>Payment Method:</strong> <?php echo e($booking['latest_payment_method'] ? bus_booking_format_status((string)$booking['latest_payment_method']) : '-'); ?></div>
                     <div class="mb-2"><strong>Payment Ref:</strong> <?php echo e($booking['latest_payment_ref'] ?: '-'); ?></div>
                     <div class="mb-2"><strong>Payment Amount:</strong> <?php echo e($booking['latest_payment_amount'] !== null ? number_format((float)$booking['latest_payment_amount'], 2) . ' MMK' : '-'); ?></div>
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <strong>Latest Payment Status:</strong>
                         <?php if (!empty($booking['latest_payment_status'])): ?>
                             <span class="badge bg-<?php echo e(bus_booking_badge_class((string)$booking['latest_payment_status'])); ?>">
@@ -145,6 +148,31 @@ require_once __DIR__ . '/../includes/header.php';
                             -
                         <?php endif; ?>
                     </div>
+
+                    <?php if (!empty($booking['latest_payment_screenshot_path'])): ?>
+                        <div class="mb-3">
+                            <a href="<?php echo BASE_URL . e($booking['latest_payment_screenshot_path']); ?>" target="_blank" class="btn btn-sm btn-outline-warning">
+                                View Payment Proof
+                            </a>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($canApproveBookings && !empty($booking['latest_payment_id']) && (string)$booking['latest_payment_status'] === 'submitted'): ?>
+                        <div class="d-flex flex-wrap gap-2">
+                            <form action="<?php echo BASE_URL; ?>actions/verify_payment.php" method="POST" class="d-inline">
+                                <input type="hidden" name="payment_id" value="<?php echo e($booking['latest_payment_id']); ?>">
+                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Verify this payment and generate ticket?');">
+                                    Approve Payment
+                                </button>
+                            </form>
+                            <form action="<?php echo BASE_URL; ?>actions/reject_payment.php" method="POST" class="d-inline">
+                                <input type="hidden" name="payment_id" value="<?php echo e($booking['latest_payment_id']); ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject this payment?');">
+                                    Reject Payment
+                                </button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

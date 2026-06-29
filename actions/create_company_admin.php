@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('super_admin');
 
@@ -353,7 +354,32 @@ try {
         throw new Exception('Failed to link user with company: ' . $linkStmt->error);
     }
 
+    $companyUserId = (int)$linkStmt->insert_id;
     $linkStmt->close();
+
+    if ($companyUserId <= 0) {
+        $companyUserLookupSql = "
+            SELECT id
+            FROM company_users
+            WHERE company_id = ?
+              AND user_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+        ";
+        $companyUserLookupStmt = $conn->prepare($companyUserLookupSql);
+        if ($companyUserLookupStmt) {
+            $companyUserLookupStmt->bind_param('ii', $companyId, $userId);
+            $companyUserLookupStmt->execute();
+            $companyUserLookupRow = $companyUserLookupStmt->get_result()->fetch_assoc();
+            $companyUserLookupStmt->close();
+            $companyUserId = (int)($companyUserLookupRow['id'] ?? 0);
+        }
+    }
+
+    if ($companyUserId > 0) {
+        $defaultPermissions = default_permissions_for_company_type((string)($company['company_type'] ?? ''), $role);
+        sync_company_permissions($conn, $companyUserId, $defaultPermissions);
+    }
 
     if (column_exists($conn, 'audit_logs', 'user_id')) {
         $auditSql = "

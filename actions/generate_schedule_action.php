@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
 require_once __DIR__ . '/../includes/schedule_helper.php';
 require_once __DIR__ . '/../includes/permission_helper.php';
+require_once __DIR__ . '/../includes/seat_layout_helper.php';
 
 if (!in_array((string) current_user_role(), ['super_admin', 'bus_admin'], true)) {
     redirect('index.php');
@@ -89,8 +90,81 @@ try {
         throw new Exception('Please choose a company first.');
     }
 
-    if (!in_array($actionType, ['create_template', 'create_and_generate'], true)) {
+    if (!in_array($actionType, ['create_template', 'create_and_generate', 'generate_existing'], true)) {
         throw new Exception('Invalid action type.');
+    }
+
+    if ($actionType === 'generate_existing') {
+        $templateId = (int)($_POST['schedule_template_id'] ?? 0);
+        if ($templateId <= 0) {
+            throw new Exception('Invalid schedule template selected.');
+        }
+
+        $templateSql = "
+            SELECT
+                st.*,
+                b.total_seats
+            FROM schedule_templates st
+            INNER JOIN buses b ON b.id = st.bus_id
+            INNER JOIN routes r ON r.id = st.route_id
+            WHERE st.id = ?
+              AND st.company_id = ?
+              AND st.status = 'active'
+              AND b.status = 'active'
+              AND r.status = 'active'
+            LIMIT 1
+        ";
+
+        $templateStmt = $conn->prepare($templateSql);
+        if (!$templateStmt) {
+            throw new Exception('Failed to load schedule template.');
+        }
+
+        $templateStmt->bind_param('ii', $templateId, $companyId);
+        $templateStmt->execute();
+        $templateResult = $templateStmt->get_result();
+        $template = $templateResult ? $templateResult->fetch_assoc() : null;
+        $templateStmt->close();
+
+        if (!$template) {
+            throw new Exception('Schedule template not found or inactive.');
+        }
+
+        $availableSeats = ensure_bus_seat_layout($conn, (int)$template['bus_id']);
+        if ($availableSeats <= 0) {
+            throw new Exception('The selected bus has no bookable seats. Please check bus total seats and seat layout.');
+        }
+
+        $conn->begin_transaction();
+
+        $tripResult = generate_trips_from_template($conn, $template, $availableSeats);
+        $generatedCount = (int)($tripResult['generated_count'] ?? 0);
+        $skippedCount = (int)($tripResult['skipped_count'] ?? 0);
+
+        $auditSql = "
+            INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ";
+        $userId = (int) current_user_id();
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+        $auditAction = 'trips_generated';
+        $entityType = 'schedule_template';
+        $tripDescription = 'Generated trips from existing template ID: ' . $templateId .
+            ' | Generated: ' . $generatedCount .
+            ' | Skipped: ' . $skippedCount;
+
+        $auditStmt = $conn->prepare($auditSql);
+        if ($auditStmt) {
+            $auditStmt->bind_param('ississ', $userId, $auditAction, $entityType, $templateId, $tripDescription, $ipAddress);
+            $auditStmt->execute();
+            $auditStmt->close();
+        }
+
+        $conn->commit();
+        $conn->close();
+
+        set_flash('success', 'Trips generated. Generated: ' . $generatedCount . ', Skipped: ' . $skippedCount);
+        redirect_schedule_page_scope($scope);
     }
 
     $routeId = (int)($_POST['route_id'] ?? 0);
@@ -157,6 +231,11 @@ try {
     }
 
     $bus = validate_route_and_bus_by_company($conn, $companyId, $routeId, $busId);
+
+    $availableSeatCount = ensure_bus_seat_layout($conn, (int)$bus['id']);
+    if ($availableSeatCount <= 0) {
+        throw new Exception('The selected bus has no bookable seats. Please check bus total seats and seat layout.');
+    }
 
     $weekdaysStorage = weekdays_to_storage($weekdays);
     $priceValue = (float) $price;
@@ -292,13 +371,7 @@ try {
             throw new Exception('Saved template could not be reloaded.');
         }
 
-        $availableSeats = get_active_bus_seat_count(
-            $conn,
-            (int) $bus['id'],
-            (int) $bus['total_seats']
-        );
-
-        $tripResult = generate_trips_from_template($conn, $template, $availableSeats);
+        $tripResult = generate_trips_from_template($conn, $template, $availableSeatCount);
 
         $generatedCount = (int)($tripResult['generated_count'] ?? 0);
         $skippedCount = (int)($tripResult['skipped_count'] ?? 0);

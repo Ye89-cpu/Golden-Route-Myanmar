@@ -3,15 +3,45 @@ require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
 require_once __DIR__ . '/../includes/bus_booking_helper.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('bus_admin');
 
 $page_title = 'Bus Booking Management';
 
 $conn = getDBConnection();
+require_company_permission($conn, 'manage_bookings');
 $company = require_bus_admin_company($conn);
+$canApproveBookings = user_has_company_permission($conn, 'approve_bookings');
 
-$tripDate = trim($_GET['trip_date'] ?? '');
+
+function bus_admin_normalize_trip_date(string $date): string
+{
+    $date = trim($date);
+    if ($date === '') {
+        return '';
+    }
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return $date;
+    }
+
+    foreach (['m/d/Y', 'd/m/Y'] as $format) {
+        $dt = DateTime::createFromFormat($format, $date);
+        if ($dt instanceof DateTime && $dt->format($format) === $date) {
+            return $dt->format('Y-m-d');
+        }
+    }
+
+    $timestamp = strtotime($date);
+    if ($timestamp !== false) {
+        return date('Y-m-d', $timestamp);
+    }
+
+    return '';
+}
+
+$tripDate = bus_admin_normalize_trip_date((string)($_GET['trip_date'] ?? ''));
 $paymentStatus = trim($_GET['payment_status'] ?? 'all');
 $bookingStatus = trim($_GET['booking_status'] ?? 'all');
 
@@ -187,6 +217,11 @@ require_once __DIR__ . '/../includes/header.php';
                                                 <?php echo e(bus_booking_format_status((string)$row['payment_status'])); ?>
                                             </span>
                                         </div>
+                                        <?php if (!empty($row['latest_payment_status'])): ?>
+                                            <div class="small text-muted">
+                                                Proof: <?php echo e(bus_booking_format_status((string)$row['latest_payment_status'])); ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (!empty($row['refund_request_status'])): ?>
                                             <div>
                                                 <span class="badge bg-<?php echo e(bus_booking_badge_class((string)$row['refund_request_status'])); ?>">
@@ -207,6 +242,27 @@ require_once __DIR__ . '/../includes/header.php';
                                                 <a href="<?php echo BASE_URL . e($row['ticket_pdf_file']); ?>" target="_blank" class="btn btn-sm btn-outline-success">
                                                     Ticket PDF
                                                 </a>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($row['latest_payment_screenshot_path'])): ?>
+                                                <a href="<?php echo BASE_URL . e($row['latest_payment_screenshot_path']); ?>" target="_blank" class="btn btn-sm btn-outline-warning">
+                                                    Payment Proof
+                                                </a>
+                                            <?php endif; ?>
+
+                                            <?php if ($canApproveBookings && !empty($row['latest_payment_id']) && (string)$row['latest_payment_status'] === 'submitted'): ?>
+                                                <form action="<?php echo BASE_URL; ?>actions/verify_payment.php" method="POST" class="d-inline">
+                                                    <input type="hidden" name="payment_id" value="<?php echo e($row['latest_payment_id']); ?>">
+                                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Verify this payment and generate ticket?');">
+                                                        Approve Payment
+                                                    </button>
+                                                </form>
+                                                <form action="<?php echo BASE_URL; ?>actions/reject_payment.php" method="POST" class="d-inline">
+                                                    <input type="hidden" name="payment_id" value="<?php echo e($row['latest_payment_id']); ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject this payment?');">
+                                                        Reject
+                                                    </button>
+                                                </form>
                                             <?php endif; ?>
                                         </div>
                                     </td>

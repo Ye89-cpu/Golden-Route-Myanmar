@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/schedule_helper.php';
+require_once __DIR__ . '/seat_layout_helper.php';
 
 /*
     This function tries to use:
@@ -264,11 +265,11 @@ if (!function_exists('grm_auto_schedule_runner')) {
                     $templateForRun['active_from'] = $range['from'];
                     $templateForRun['active_to'] = $range['to'];
 
-                    $availableSeats = get_active_bus_seat_count(
-                        $conn,
-                        (int)$template['bus_id'],
-                        (int)($template['total_seats'] ?? 0)
-                    );
+                    $availableSeats = ensure_bus_seat_layout($conn, (int)$template['bus_id']);
+
+                    if ($availableSeats <= 0) {
+                        throw new Exception('The selected bus has no bookable seats. Please check bus total seats and seat layout.');
+                    }
 
                     $result = generate_trips_from_template(
                         $conn,

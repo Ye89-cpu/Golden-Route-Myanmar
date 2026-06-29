@@ -1,13 +1,18 @@
 <?php
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
+require_once __DIR__ . '/../includes/tour_company_helper.php';
 require_once __DIR__ . '/../includes/refund_helper.php';
 require_once __DIR__ . '/../includes/notification_helper.php';
 
-require_role('super_admin');
+require_role(['super_admin', 'tour_admin']);
+
+$isTourAdmin = current_user_role() === 'tour_admin';
+$redirectPath = $isTourAdmin ? 'tour_admin/refund_requests.php' : 'admin/refund_requests.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirect('admin/refund_requests.php');
+    redirect($redirectPath);
 }
 
 $refundRequestId = (int)($_POST['refund_request_id'] ?? 0);
@@ -16,15 +21,27 @@ $actorUserId = (int)current_user_id();
 
 if ($refundRequestId <= 0) {
     set_flash('error', 'Invalid refund request ID.');
-    redirect('admin/refund_requests.php');
+    redirect($redirectPath);
 }
 
 $conn = getDBConnection();
 
 try {
+    $tourCompanyId = 0;
+    if ($isTourAdmin) {
+        require_company_permission($conn, 'manage_tour_refunds');
+        $tourCompany = require_tour_admin_company($conn);
+        $tourCompanyId = (int)($tourCompany['company_id'] ?? 0);
+        if ($tourCompanyId <= 0) {
+            throw new Exception('No approved tour company is assigned to your account.');
+        }
+    }
+
     $conn->begin_transaction();
 
-    $request = fetch_refund_request_for_admin_update($conn, $refundRequestId);
+    $request = $isTourAdmin
+        ? fetch_refund_request_for_tour_admin_update($conn, $refundRequestId, $tourCompanyId)
+        : fetch_refund_request_for_admin_update($conn, $refundRequestId);
     if (!$request) {
         throw new Exception('Refund request not found.');
     }
@@ -229,7 +246,7 @@ try {
     $conn->close();
 
     set_flash('success', 'Refund request approved successfully.');
-    redirect('admin/refund_requests.php');
+    redirect($redirectPath);
 } catch (Exception $e) {
     if ($conn instanceof mysqli) {
         $conn->rollback();
@@ -237,5 +254,5 @@ try {
     }
 
     set_flash('error', $e->getMessage());
-    redirect('admin/refund_requests.php');
+    redirect($redirectPath);
 }

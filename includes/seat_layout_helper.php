@@ -157,6 +157,123 @@ function save_generated_seats(mysqli $conn, int $busId, array $seats): void
     }
 }
 
+
+function count_bookable_bus_seats(mysqli $conn, int $busId): int
+{
+    if ($busId <= 0) {
+        return 0;
+    }
+
+    $sql = "
+        SELECT COUNT(*) AS total
+        FROM bus_seats
+        WHERE bus_id = ?
+          AND is_active = 1
+          AND seat_type NOT IN ('driver', 'assistant')
+    ";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return 0;
+    }
+
+    $stmt->bind_param('i', $busId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return (int)($row['total'] ?? 0);
+}
+
+function bus_has_booking_seat_usage(mysqli $conn, int $busId): bool
+{
+    if ($busId <= 0) {
+        return false;
+    }
+
+    $sql = "
+        SELECT bs.id
+        FROM booking_seats bks
+        INNER JOIN bus_seats bs ON bs.id = bks.bus_seat_id
+        WHERE bs.bus_id = ?
+        LIMIT 1
+    ";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return true;
+    }
+
+    $stmt->bind_param('i', $busId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $hasUsage = $result && $result->num_rows > 0;
+    $stmt->close();
+
+    return $hasUsage;
+}
+
+function fetch_bus_for_seat_generation(mysqli $conn, int $busId): ?array
+{
+    if ($busId <= 0) {
+        return null;
+    }
+
+    $sql = "
+        SELECT id, bus_number, bus_type, total_seats, layout_type
+        FROM buses
+        WHERE id = ?
+        LIMIT 1
+    ";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('i', $busId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $bus = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return $bus ?: null;
+}
+
+function ensure_bus_seat_layout(mysqli $conn, int $busId, bool $repairMismatch = false): int
+{
+    $bus = fetch_bus_for_seat_generation($conn, $busId);
+    if (!$bus) {
+        return 0;
+    }
+
+    $totalSeats = (int)($bus['total_seats'] ?? 0);
+    if ($totalSeats <= 0) {
+        return 0;
+    }
+
+    $activeSeatCount = count_bookable_bus_seats($conn, $busId);
+
+    if ($activeSeatCount > 0) {
+        if ($repairMismatch && $activeSeatCount !== $totalSeats && !bus_has_booking_seat_usage($conn, $busId)) {
+            $generatedSeats = generate_seat_records($bus);
+            save_generated_seats($conn, $busId, $generatedSeats);
+            return count_bookable_bus_seats($conn, $busId);
+        }
+
+        return $activeSeatCount;
+    }
+
+    $generatedSeats = generate_seat_records($bus);
+    if (empty($generatedSeats)) {
+        return 0;
+    }
+
+    save_generated_seats($conn, $busId, $generatedSeats);
+    return count_bookable_bus_seats($conn, $busId);
+}
+
 function seat_badge_class(string $seatType, int $isActive): string
 {
     if ((int)$isActive !== 1) {

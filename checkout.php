@@ -19,6 +19,19 @@ if ($tripId > 0) {
     $trip = fetch_trip_checkout_details($conn, $tripId);
 
     if ($trip) {
+        try {
+            // Some buses were created without rows in bus_seats.
+            // Create the layout on demand so a new trip is not shown as Sold Out.
+            ensure_bus_seat_layout($conn, (int)$trip['bus_id']);
+            refresh_trip_available_seats($conn, $tripId);
+            $refreshedTrip = fetch_trip_checkout_details($conn, $tripId);
+            if ($refreshedTrip) {
+                $trip = $refreshedTrip;
+            }
+        } catch (Throwable $seatLayoutError) {
+            // The page can still show the original warning below if layout creation fails.
+        }
+
         $seats = fetch_trip_seat_map($conn, $tripId, (int)$trip['bus_id']);
         $rows = group_seats_by_row($seats);
         $layoutConfig = get_layout_config((string)$trip['layout_type']);

@@ -1,12 +1,7 @@
-[2026-04-08 18:23:20] MAIL_ERROR | TO=yewint@gmail.com | SUBJECT=Your bus booking MBTB-20260408-542F11 is confirmed | ERROR=SMTP Error: Could not authenticate.
-[2026-04-09 01:16:25] MAIL_ERROR | TO=yewint@gmail.com | SUBJECT=Refund request received for MBTB-20260408-542F11 | ERROR=SMTP Error: Could not authenticate.
-[2026-04-09 01:16:28] MAIL_ERROR | TO=admin@mbtb.local | SUBJECT=New refund request RFD-20260409-D059B7 for MBTB-20260408-542F11 | ERROR=SMTP Error: Could not authenticate.
-[2026-04-09 01:17:46] MAIL_ERROR | TO=yewint@gmail.com | SUBJECT=Refund approved for MBTB-20260408-542F11 | ERROR=SMTP Error: Could not authenticate.
-[2026-04-09 01:19:46] MAIL_ERROR | TO=yemyatkyaw6227@gmail.com | SUBJECT=Your bus booking MBTB-20260403-E0CF88 is confirmed | ERROR=SMTP Error: Could not authenticate.
-[2026-04-09 17:19:03] MAIL_SENT=1 | TO=yellwintzaw2300@gmail.com | SUBJECT=Your bus booking MBTB-20260409-E80207 is confirmed
-[2026-04-09 17:53:50] MAIL_SENT=1 | TO=yellwintzaw23002@gmail.com | SUBJECT=Your bus booking MBTB-20260409-0BB8F4 is confirmed
-[2026-04-10 03:44:00] MAIL_SENT=1 | TO=yellwintzaw23002@gmail.com | SUBJECT=Your bus booking MBTB-20260410-946DA2 is confirmed
-[2026-04-10 14:58:22] MAIL_SENT=1 | TO=yellwintzaw23002@gmail.com | SUBJECT=Your bus booking GRM-20260410-917BDF is confirmed
-[2026-06-03 13:59:12] MAIL_SENT=1 | TO=yellwintzaw23002@gmail.com | SUBJECT=Your bus booking GRM-20260603-AE991C is confirmed
-[2026-06-21 10:32:11] MAIL_SENT=1 | TO=yellwintzaw23002@gmail.com | SUBJECT=Your bus booking GRM-20260621-FB2F73 is confirmed
-[2026-06-21 10:48:35] MAIL_SENT=1 | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260621-88C266 is confirmed
+[2026-06-29 09:47:27] MAIL_DISABLED_CONFIG | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260629-2E3222 is confirmed
+[2026-06-29 09:47:33] MAIL_DISABLED_CONFIG | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260629-5FBB85 is confirmed
+[2026-06-29 10:02:32] MAIL_DISABLED_CONFIG | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260629-A08A81 is confirmed
+[2026-06-29 10:02:40] MAIL_DISABLED_CONFIG | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260628-068719 is confirmed
+[2026-06-29 10:02:45] MAIL_DISABLED_CONFIG | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260628-9B6B2B is confirmed
+[2026-06-29 10:02:47] MAIL_DISABLED_CONFIG | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your tour booking GRM-20260628-7987A9 is confirmed
+[2026-06-29 10:04:36] MAIL_SENT=1 | TO=yemyatkyaw5678@gmail.com | SUBJECT=Your bus booking GRM-20260629-52BA36 is confirmed

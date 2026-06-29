@@ -17,14 +17,7 @@ if ($companyUserId <= 0) {
     redirect('admin/companies.php');
 }
 
-$allowedPermissions = [
-    'manage_buses',
-    'manage_bookings',
-    'approve_bookings',
-    'manage_routes',
-    'manage_schedules',
-    'view_ticket',
-];
+$allowedPermissions = company_allowed_permission_keys();
 
 $cleanPermissions = [];
 foreach ((array)$permissions as $permission) {

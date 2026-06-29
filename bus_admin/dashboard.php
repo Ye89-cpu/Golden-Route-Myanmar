@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
+require_once __DIR__ . '/../includes/bus_booking_helper.php';
 require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('bus_admin');
@@ -11,17 +12,26 @@ $page_title = 'Bus Admin Dashboard';
 $user = current_user();
 $conn = getDBConnection();
 
+$canManageBuses = false;
+$canManageBookings = false;
+$canApproveBookings = false;
 $canViewTicket = false;
 $canManageRoutes = false;
 $canManageSchedules = false;
 
 try {
     if (function_exists('user_has_company_permission')) {
+        $canManageBuses = user_has_company_permission($conn, 'manage_buses');
+        $canManageBookings = user_has_company_permission($conn, 'manage_bookings');
+        $canApproveBookings = user_has_company_permission($conn, 'approve_bookings');
         $canViewTicket = user_has_company_permission($conn, 'view_ticket');
         $canManageRoutes = user_has_company_permission($conn, 'manage_routes');
         $canManageSchedules = user_has_company_permission($conn, 'manage_schedules');
     }
 } catch (Throwable $e) {
+    $canManageBuses = false;
+    $canManageBookings = false;
+    $canApproveBookings = false;
     $canViewTicket = false;
     $canManageRoutes = false;
     $canManageSchedules = false;
@@ -69,27 +79,13 @@ if ($company) {
         $stmt->close();
     }
 
-    $bookingSql = "
-        SELECT
-            COUNT(*) AS total_bookings,
-            COALESCE(SUM(b.status = 'pending'), 0) AS pending_bookings,
-            COALESCE(SUM(b.payment_status = 'paid'), 0) AS paid_bookings
-        FROM bookings b
-        INNER JOIN trips t ON t.id = b.trip_id
-        WHERE t.company_id = ?
-    ";
-    $stmt = $conn->prepare($bookingSql);
-    if ($stmt) {
-        $stmt->bind_param('i', $companyId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result ? $result->fetch_assoc() : null;
-        if ($row) {
-            $summary['total_bookings'] = (int)($row['total_bookings'] ?? 0);
-            $summary['pending_bookings'] = (int)($row['pending_bookings'] ?? 0);
-            $summary['paid_bookings'] = (int)($row['paid_bookings'] ?? 0);
-        }
-        $stmt->close();
+    try {
+        $bookingSummary = fetch_bus_admin_booking_summary($conn, $companyId);
+        $summary['total_bookings'] = (int)($bookingSummary['total_bookings'] ?? 0);
+        $summary['pending_bookings'] = (int)($bookingSummary['pending_review_bookings'] ?? 0);
+        $summary['paid_bookings'] = (int)($bookingSummary['paid_bookings'] ?? 0);
+    } catch (Throwable $e) {
+        // Keep dashboard accessible even if booking summary fails.
     }
 }
 
@@ -118,8 +114,15 @@ require_once __DIR__ . '/../includes/header.php';
 
             <div class="col-lg-4">
                 <div class="d-grid gap-2">
-                    <a href="<?php echo BASE_URL; ?>bus_admin/buses.php" class="btn btn-brand">Manage Buses</a>
-                    <a href="<?php echo BASE_URL; ?>bus_admin/bookings.php" class="btn btn-nav-soft">Manage Bookings</a>
+                    <?php if ($canManageBuses): ?>
+                        <a href="<?php echo BASE_URL; ?>bus_admin/buses.php" class="btn btn-brand">Manage Buses</a>
+                    <?php endif; ?>
+                    <?php if ($canManageBookings): ?>
+                        <a href="<?php echo BASE_URL; ?>bus_admin/bookings.php" class="btn btn-nav-soft">Manage Bookings</a>
+                    <?php endif; ?>
+                    <?php if (!$canManageBuses && !$canManageBookings): ?>
+                        <div class="alert alert-warning mb-0">No bus admin actions are enabled for this account.</div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -224,8 +227,15 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
 
             <div class="quick-link-grid">
-                <a href="<?php echo BASE_URL; ?>bus_admin/buses.php" class="quick-link-card">Edit Buses</a>
-                <a href="<?php echo BASE_URL; ?>bus_admin/bookings.php" class="quick-link-card">Edit / Approve Bookings</a>
+                <?php if ($canManageBuses): ?>
+                    <a href="<?php echo BASE_URL; ?>bus_admin/buses.php" class="quick-link-card">Edit Buses</a>
+                <?php endif; ?>
+
+                <?php if ($canManageBookings): ?>
+                    <a href="<?php echo BASE_URL; ?>bus_admin/bookings.php" class="quick-link-card">
+                        <?php echo $canApproveBookings ? 'Edit / Approve Bookings' : 'View Bookings'; ?>
+                    </a>
+                <?php endif; ?>
 
                 <?php if ($canManageRoutes): ?>
                     <a href="<?php echo BASE_URL; ?>bus_admin/routes.php" class="quick-link-card">Add / Edit Routes</a>

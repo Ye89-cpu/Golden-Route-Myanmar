@@ -91,12 +91,14 @@ $listSql = "
         u.name AS customer_name,
         u.email AS customer_email,
 
-        c.name AS company_name
+        COALESCE(bus_company.name, tour_company.name, '-') AS company_name
     FROM payments p
     INNER JOIN bookings b ON b.id = p.booking_id
     INNER JOIN users u ON u.id = b.user_id
     LEFT JOIN trips t ON t.id = b.trip_id
-    LEFT JOIN companies c ON c.id = t.company_id
+    LEFT JOIN companies bus_company ON bus_company.id = t.company_id
+    LEFT JOIN tour_batches tb ON tb.id = b.tour_batch_id
+    LEFT JOIN companies tour_company ON tour_company.id = tb.company_id
     ORDER BY FIELD(p.status, 'submitted', 'rejected', 'verified'), p.id DESC
 ";
 $listStmt = $conn->prepare($listSql);

@@ -2,13 +2,14 @@
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('bus_admin');
 
 $page_title = 'Manage Buses';
-require_once __DIR__ . '/../includes/header.php';
 
 $conn = getDBConnection();
+require_company_permission($conn, 'manage_buses');
 $company = require_bus_admin_company($conn);
 
 function bus_status_badge_class($status)
@@ -68,6 +69,8 @@ while ($row = $listResult->fetch_assoc()) {
 }
 $listStmt->close();
 $conn->close();
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="container py-5">

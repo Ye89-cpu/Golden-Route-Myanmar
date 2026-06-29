@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 require_once __DIR__ . '/../includes/tour_company_helper.php';
 
 require_role('tour_admin');
@@ -9,6 +10,9 @@ $page_title = 'Tour Admin Dashboard';
 
 $user = current_user();
 $company = null;
+$canViewReports = false;
+$canManageTourPayments = false;
+$canManageTourRefunds = false;
 $stats = [
     'packages_total' => 0,
     'packages_active' => 0,
@@ -21,6 +25,10 @@ $conn = getDBConnection();
 $company = get_tour_admin_company($conn, (int)current_user_id());
 
 if ($company) {
+    $canViewReports = user_has_company_permission($conn, 'view_business_reports');
+    $canManageTourPayments = user_has_company_permission($conn, 'manage_tour_payments');
+    $canManageTourRefunds = user_has_company_permission($conn, 'manage_tour_refunds');
+
     $packageStatsSql = "
         SELECT
             COUNT(*) AS total_packages,
@@ -96,6 +104,21 @@ require_once __DIR__ . '/../includes/header.php';
                 <a href="<?php echo BASE_URL; ?>tour_admin/voucher_checkin.php" class="btn btn-outline-dark">
                     Voucher Check-in
                 </a>
+                <?php if ($canViewReports): ?>
+                    <a href="<?php echo BASE_URL; ?>tour_admin/business_reports.php" class="btn btn-outline-danger">
+                        Business Reports
+                    </a>
+                <?php endif; ?>
+                <?php if ($canManageTourPayments): ?>
+                    <a href="<?php echo BASE_URL; ?>tour_admin/payments.php" class="btn btn-outline-success">
+                        Package Payments
+                    </a>
+                <?php endif; ?>
+                <?php if ($canManageTourRefunds): ?>
+                    <a href="<?php echo BASE_URL; ?>tour_admin/refund_requests.php" class="btn btn-outline-warning">
+                        Refund Requests
+                    </a>
+                <?php endif; ?>
                 <a href="<?php echo BASE_URL; ?>notifications.php" class="btn btn-outline-dark">Notifications</a>
             </div>
         </div>
@@ -163,6 +186,45 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
             </div>
+        </div>
+
+
+        <div class="row g-4 mt-1">
+            <?php if ($canViewReports): ?>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold">Business Reports</h5>
+                            <p class="text-muted">Generate tour package revenue, payment and booking reports for your company.</p>
+                            <a href="<?php echo BASE_URL; ?>tour_admin/business_reports.php" class="btn btn-danger">Open Reports</a>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($canManageTourPayments): ?>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold">Package Payments</h5>
+                            <p class="text-muted">Verify or reject customer payment proofs for your own tour package bookings.</p>
+                            <a href="<?php echo BASE_URL; ?>tour_admin/payments.php" class="btn btn-success">Review Payments</a>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($canManageTourRefunds): ?>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold">Refund Requests</h5>
+                            <p class="text-muted">Approve or reject refund requests for your own tour package bookings.</p>
+                            <a href="<?php echo BASE_URL; ?>tour_admin/refund_requests.php" class="btn btn-warning">Review Refunds</a>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>

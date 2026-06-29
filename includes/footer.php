@@ -15,7 +15,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $isUserLoggedIn = !empty($_SESSION['user']);
 ?>
 
-<footer class="site-footer-premium p-5">
+<footer class="site-footer-premium p-2">
 
 
     <div class="container-fluid position-relative" style="z-index:2;">

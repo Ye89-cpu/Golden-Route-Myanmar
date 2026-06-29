@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
+require_once __DIR__ . '/../includes/seat_layout_helper.php';
 
 require_role('bus_admin');
 
@@ -10,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $conn = getDBConnection();
+require_company_permission($conn, 'manage_buses');
 $company = require_bus_admin_company($conn);
 
 $busId = (int)($_POST['bus_id'] ?? 0);
@@ -132,6 +135,15 @@ $updateStmt->bind_param(
 if ($updateStmt->execute()) {
     $updateStmt->close();
 
+    $seatLayoutWarning = '';
+    try {
+        // If the bus has no seats yet, generate them. If seats differ from total_seats
+        // and no bookings use those seats yet, safely rebuild the layout.
+        ensure_bus_seat_layout($conn, (int)$busId, true);
+    } catch (Throwable $seatError) {
+        $seatLayoutWarning = ' Seat layout could not be updated automatically. Please check Seat Layout manually.';
+    }
+
     $action = 'bus_updated';
     $entityType = 'bus';
     $description = 'Updated bus: ' . $busNumber;
@@ -148,7 +160,7 @@ if ($updateStmt->execute()) {
     $auditStmt->close();
 
     $conn->close();
-    set_flash('success', 'Bus updated successfully.');
+    set_flash('success', 'Bus updated successfully.' . $seatLayoutWarning);
     redirect('bus_admin/buses.php');
 }
 

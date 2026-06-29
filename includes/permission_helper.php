@@ -2,33 +2,97 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 
-function default_permissions_for_company_type(string $companyType): array
+function company_permission_catalog(): array
 {
+    return [
+        'manage_buses' => [
+            'label' => 'Manage Buses',
+            'description' => 'Create, edit and delete company buses.',
+            'group' => 'Bus Admin',
+        ],
+        'manage_bookings' => [
+            'label' => 'Manage Bookings',
+            'description' => 'View and manage company booking records.',
+            'group' => 'Bus / Tour Admin',
+        ],
+        'approve_bookings' => [
+            'label' => 'Approve Bookings',
+            'description' => 'Approve or confirm company bookings.',
+            'group' => 'Bus Admin',
+        ],
+        'manage_routes' => [
+            'label' => 'Manage Routes',
+            'description' => 'Create, edit and delete bus routes.',
+            'group' => 'Bus Admin',
+        ],
+        'manage_schedules' => [
+            'label' => 'Manage Schedules',
+            'description' => 'Create and generate bus schedules.',
+            'group' => 'Bus Admin',
+        ],
+        'view_ticket' => [
+            'label' => 'View Tickets',
+            'description' => 'View generated bus tickets.',
+            'group' => 'Bus Admin',
+        ],
+        'view_business_reports' => [
+            'label' => 'Business Reports',
+            'description' => 'Allow tour admin to generate company business reports.',
+            'group' => 'Tour Admin',
+        ],
+        'manage_tour_payments' => [
+            'label' => 'Tour Package Payments',
+            'description' => 'Allow tour admin to verify/reject payments for own tour packages.',
+            'group' => 'Tour Admin',
+        ],
+        'manage_tour_refunds' => [
+            'label' => 'Tour Refunds',
+            'description' => 'Allow tour admin to approve/reject refunds for own tour package bookings.',
+            'group' => 'Tour Admin',
+        ],
+    ];
+}
+
+function company_allowed_permission_keys(): array
+{
+    return array_keys(company_permission_catalog());
+}
+
+function default_permissions_for_company_type(string $companyType, ?string $adminRole = null): array
+{
+    $busPermissions = [
+        'manage_buses',
+        'manage_bookings',
+        'approve_bookings',
+        'manage_routes',
+        'manage_schedules',
+        'view_ticket',
+    ];
+
+    $tourPermissions = [
+        'manage_bookings',
+        'view_business_reports',
+        'manage_tour_payments',
+        'manage_tour_refunds',
+    ];
+
+    if ($adminRole === 'tour_admin') {
+        return $tourPermissions;
+    }
+
+    if ($adminRole === 'bus_admin') {
+        return $busPermissions;
+    }
+
     switch ($companyType) {
         case 'bus_company':
-            return [
-                'manage_buses',
-                'manage_bookings',
-                'approve_bookings',
-                'manage_routes',
-                'manage_schedules',
-                'view_ticket',
-            ];
+            return $busPermissions;
 
         case 'tour_operator':
-            return [
-                'manage_bookings',
-            ];
+            return $tourPermissions;
 
         case 'both':
-            return [
-                'manage_buses',
-                'manage_bookings',
-                'approve_bookings',
-                'manage_routes',
-                'manage_schedules',
-                'view_ticket',
-            ];
+            return array_values(array_unique(array_merge($busPermissions, $tourPermissions)));
 
         default:
             return [];
@@ -185,7 +249,7 @@ function create_company_admin_account(
         return null;
     }
 
-    $defaultPermissions = default_permissions_for_company_type($companyType);
+    $defaultPermissions = default_permissions_for_company_type($companyType, $role);
     sync_company_permissions($conn, $companyUserId, $defaultPermissions);
 
     return [
@@ -307,12 +371,27 @@ function current_company_user_record(mysqli $conn): ?array
         return null;
     }
 
+    $role = (string)current_user_role();
+    $companyTypeCondition = '';
+
+    if ($role === 'bus_admin') {
+        $companyTypeCondition = "AND c.status = 'approved' AND c.company_type IN ('bus_company', 'both')";
+    } elseif ($role === 'tour_admin') {
+        $companyTypeCondition = "AND c.status = 'approved' AND c.company_type IN ('tour_operator', 'both')";
+    }
+
     $sql = "
-        SELECT *
-        FROM company_users
-        WHERE user_id = ?
-          AND status = 'active'
-        ORDER BY id ASC
+        SELECT
+            cu.*,
+            c.name AS company_name,
+            c.company_type,
+            c.status AS company_status
+        FROM company_users cu
+        INNER JOIN companies c ON c.id = cu.company_id
+        WHERE cu.user_id = ?
+          AND cu.status = 'active'
+          {$companyTypeCondition}
+        ORDER BY cu.id ASC
         LIMIT 1
     ";
     $stmt = $conn->prepare($sql);

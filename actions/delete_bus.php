@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/company_helper.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('bus_admin');
 
@@ -10,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $conn = getDBConnection();
+require_company_permission($conn, 'manage_buses');
 $company = require_bus_admin_company($conn);
 
 $busId = (int)($_POST['bus_id'] ?? 0);

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/role_check.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/permission_helper.php';
 
 require_role('super_admin');
 
@@ -127,6 +128,52 @@ if ($companyStmt) {
     }
 
     $companyStmt->close();
+}
+
+$permissionCatalog = company_permission_catalog();
+$companyAdminsByCompany = [];
+$permissionKeysByCompanyUser = [];
+
+$adminSql = "
+    SELECT
+        cu.id AS company_user_id,
+        cu.company_id,
+        cu.user_id,
+        cu.role_in_company,
+        cu.status AS company_user_status,
+        u.name,
+        u.email,
+        u.role,
+        u.status AS user_status
+    FROM company_users cu
+    INNER JOIN users u ON u.id = cu.user_id
+    ORDER BY cu.company_id ASC, u.role ASC, cu.id ASC
+";
+$adminStmt = $conn->prepare($adminSql);
+if ($adminStmt) {
+    $adminStmt->execute();
+    $adminResult = $adminStmt->get_result();
+    while ($row = $adminResult->fetch_assoc()) {
+        $companyIdKey = (int)($row['company_id'] ?? 0);
+        $companyAdminsByCompany[$companyIdKey][] = $row;
+    }
+    $adminStmt->close();
+}
+
+$permissionSql = "
+    SELECT company_user_id, permission_key
+    FROM company_user_permissions
+    ORDER BY permission_key ASC
+";
+$permissionStmt = $conn->prepare($permissionSql);
+if ($permissionStmt) {
+    $permissionStmt->execute();
+    $permissionResult = $permissionStmt->get_result();
+    while ($row = $permissionResult->fetch_assoc()) {
+        $companyUserIdKey = (int)($row['company_user_id'] ?? 0);
+        $permissionKeysByCompanyUser[$companyUserIdKey][] = (string)($row['permission_key'] ?? '');
+    }
+    $permissionStmt->close();
 }
 
 $conn->close();
@@ -374,6 +421,50 @@ require_once __DIR__ . '/../includes/header.php';
                                             </div>
                                         <?php endif; ?>
                                     </div>
+                                </div>
+
+                                <div class="mt-3 w-100">
+                                    <?php $companyAdmins = $companyAdminsByCompany[(int)$company['id']] ?? []; ?>
+                                    <?php if (!empty($companyAdmins)): ?>
+                                        <div class="border rounded-4 p-3 bg-light">
+                                            <div class="fw-semibold mb-2">Admin Permissions</div>
+                                            <?php foreach ($companyAdmins as $companyAdmin): ?>
+                                                <?php
+                                                    $companyUserId = (int)($companyAdmin['company_user_id'] ?? 0);
+                                                    $selectedPermissions = $permissionKeysByCompanyUser[$companyUserId] ?? [];
+                                                ?>
+                                                <form action="<?php echo BASE_URL; ?>actions/update_company_permissions.php" method="POST" class="mb-3 pb-3 border-bottom">
+                                                    <input type="hidden" name="company_user_id" value="<?php echo e($companyUserId); ?>">
+                                                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-2">
+                                                        <div>
+                                                            <div class="fw-semibold small"><?php echo e($companyAdmin['name']); ?></div>
+                                                            <div class="text-muted small">
+                                                                <?php echo e($companyAdmin['email']); ?> · <?php echo e(ucwords(str_replace('_', ' ', (string)$companyAdmin['role']))); ?>
+                                                            </div>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-sm btn-primary align-self-start">Save Permissions</button>
+                                                    </div>
+                                                    <div class="row g-2">
+                                                        <?php foreach ($permissionCatalog as $permissionKey => $permissionMeta): ?>
+                                                            <div class="col-md-6">
+                                                                <label class="form-check small border rounded-3 p-2 bg-white h-100">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name="permissions[]"
+                                                                        value="<?php echo e($permissionKey); ?>"
+                                                                        class="form-check-input me-1"
+                                                                        <?php echo in_array($permissionKey, $selectedPermissions, true) ? 'checked' : ''; ?>
+                                                                    >
+                                                                    <span class="fw-semibold"><?php echo e($permissionMeta['label']); ?></span>
+                                                                    <div class="text-muted mt-1"><?php echo e($permissionMeta['description']); ?></div>
+                                                                </label>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </form>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="text-end">

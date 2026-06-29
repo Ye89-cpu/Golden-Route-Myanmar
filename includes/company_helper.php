@@ -98,6 +98,96 @@ function require_tour_admin_company(mysqli $conn): array
     return $company;
 }
 
+
+function get_related_bus_company_ids(mysqli $conn, int $companyId): array
+{
+    if ($companyId <= 0) {
+        return [];
+    }
+
+    $companySql = "
+        SELECT id, name
+        FROM companies
+        WHERE id = ?
+        LIMIT 1
+    ";
+    $stmt = $conn->prepare($companySql);
+    if (!$stmt) {
+        return [$companyId];
+    }
+
+    $stmt->bind_param('i', $companyId);
+    $stmt->execute();
+    $company = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$company) {
+        return [$companyId];
+    }
+
+    $companyName = trim((string)($company['name'] ?? ''));
+    if ($companyName === '') {
+        return [$companyId];
+    }
+
+    /*
+        Some demo data contains duplicate approved bus companies with the same
+        display name (for example, Shwe Mandalar Express). The bus admin may be
+        linked to the newer company record while trips/bookings still belong to
+        the older company record. Include same-name approved bus companies so
+        bookings, payment proofs, and approvals are visible to the assigned admin.
+    */
+    $relatedSql = "
+        SELECT id
+        FROM companies
+        WHERE status = 'approved'
+          AND company_type IN ('bus_company', 'both')
+          AND (
+              id = ?
+              OR LOWER(TRIM(name)) = LOWER(TRIM(?))
+          )
+        ORDER BY id ASC
+    ";
+
+    $stmt = $conn->prepare($relatedSql);
+    if (!$stmt) {
+        return [$companyId];
+    }
+
+    $stmt->bind_param('is', $companyId, $companyName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $ids = [];
+    while ($row = $result->fetch_assoc()) {
+        $id = (int)($row['id'] ?? 0);
+        if ($id > 0) {
+            $ids[] = $id;
+        }
+    }
+    $stmt->close();
+
+    $ids[] = $companyId;
+    $ids = array_values(array_unique(array_filter($ids, static fn($id) => (int)$id > 0)));
+    sort($ids);
+
+    return $ids;
+}
+
+function get_bus_admin_company_scope_ids(mysqli $conn, ?array $company = null): array
+{
+    if ($company === null) {
+        $company = get_bus_admin_company($conn, (int) current_user_id());
+    }
+
+    $companyId = (int)($company['company_id'] ?? 0);
+    if ($companyId <= 0) {
+        return [];
+    }
+
+    return get_related_bus_company_ids($conn, $companyId);
+}
+
 function fetch_manageable_bus_companies(mysqli $conn): array
 {
     $companies = [];

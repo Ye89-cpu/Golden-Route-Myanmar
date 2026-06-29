@@ -2,6 +2,7 @@
 // /opt/lampp/htdocs/myanmar_bus_tour_booking/includes/bus_booking_helper.php
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/company_helper.php';
 
 function bus_booking_table_exists(mysqli $conn, string $table): bool
 {
@@ -70,8 +71,51 @@ function bus_booking_format_status(string $status): string
     return ucwords(str_replace('_', ' ', $status));
 }
 
+function bus_booking_company_scope_ids(mysqli $conn, int $companyId): array
+{
+    if (function_exists('get_related_bus_company_ids')) {
+        $ids = get_related_bus_company_ids($conn, $companyId);
+    } else {
+        $ids = [$companyId];
+    }
+
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($id) => $id > 0)));
+    if (empty($ids) && $companyId > 0) {
+        $ids = [$companyId];
+    }
+
+    return $ids;
+}
+
+function bus_booking_scope_sql(array $companyIds, array &$params, string &$types): string
+{
+    if (empty($companyIds)) {
+        $companyIds = [0];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($companyIds), '?'));
+
+    foreach ([$companyIds, $companyIds, $companyIds] as $ids) {
+        foreach ($ids as $id) {
+            $params[] = (int)$id;
+            $types .= 'i';
+        }
+    }
+
+    return "(
+        t.company_id IN ($placeholders)
+        OR bus.company_id IN ($placeholders)
+        OR r.company_id IN ($placeholders)
+    )";
+}
+
 function fetch_bus_admin_booking_summary(mysqli $conn, int $companyId): array
 {
+    $companyIds = bus_booking_company_scope_ids($conn, $companyId);
+    $params = [];
+    $types = '';
+    $scopeSql = bus_booking_scope_sql($companyIds, $params, $types);
+
     $sql = "
         SELECT
             COUNT(*) AS total_bookings,
@@ -81,8 +125,10 @@ function fetch_bus_admin_booking_summary(mysqli $conn, int $companyId): array
             COALESCE(SUM(CASE WHEN b.payment_status = 'paid' THEN b.total_amount ELSE 0 END), 0) AS paid_amount
         FROM bookings b
         INNER JOIN trips t ON t.id = b.trip_id
+        INNER JOIN buses bus ON bus.id = t.bus_id
+        INNER JOIN routes r ON r.id = t.route_id
         WHERE b.booking_type = 'bus'
-          AND t.company_id = ?
+          AND {$scopeSql}
     ";
 
     $stmt = $conn->prepare($sql);
@@ -90,7 +136,7 @@ function fetch_bus_admin_booking_summary(mysqli $conn, int $companyId): array
         throw new Exception('Summary query prepare failed: ' . $conn->error);
     }
 
-    $stmt->bind_param('i', $companyId);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result ? $result->fetch_assoc() : [];
@@ -131,6 +177,11 @@ function fetch_bus_admin_bookings(mysqli $conn, int $companyId, array $filters =
         ) rr ON rr.booking_id = b.id
     " : "";
 
+    $companyIds = bus_booking_company_scope_ids($conn, $companyId);
+    $params = [];
+    $types = '';
+    $scopeSql = bus_booking_scope_sql($companyIds, $params, $types);
+
     $sql = "
         SELECT
             b.id AS booking_id,
@@ -162,6 +213,14 @@ function fetch_bus_admin_bookings(mysqli $conn, int $companyId, array $filters =
             tk.pdf_file AS ticket_pdf_file,
             tk.status AS ticket_status,
 
+            p.id AS latest_payment_id,
+            p.amount AS latest_payment_amount,
+            p.payment_method AS latest_payment_method,
+            p.transaction_ref AS latest_payment_ref,
+            p.screenshot_path AS latest_payment_screenshot_path,
+            p.status AS latest_payment_status,
+            p.created_at AS latest_payment_created_at,
+
             {$refundSelect}
             COUNT(DISTINCT bp.id) AS passenger_rows,
             COUNT(DISTINCT bs.id) AS seat_rows
@@ -174,15 +233,19 @@ function fetch_bus_admin_bookings(mysqli $conn, int $companyId, array $filters =
         INNER JOIN cities tc ON tc.id = r.to_city_id
         INNER JOIN users u ON u.id = b.user_id
         LEFT JOIN tickets tk ON tk.booking_id = b.id
+        LEFT JOIN payments p ON p.id = (
+            SELECT p2.id
+            FROM payments p2
+            WHERE p2.booking_id = b.id
+            ORDER BY p2.id DESC
+            LIMIT 1
+        )
         LEFT JOIN booking_passengers bp ON bp.booking_id = b.id
         LEFT JOIN booking_seats bs ON bs.booking_id = b.id
         {$refundJoin}
         WHERE b.booking_type = 'bus'
-          AND t.company_id = ?
+          AND {$scopeSql}
     ";
-
-    $params = [$companyId];
-    $types = 'i';
 
     if (!empty($filters['trip_date'])) {
         $sql .= " AND t.trip_date = ? ";
@@ -208,7 +271,8 @@ function fetch_bus_admin_bookings(mysqli $conn, int $companyId, array $filters =
             t.id, t.trip_date, t.departure_datetime, t.arrival_datetime, t.status,
             bus.bus_number, bus.bus_type, c.name, fc.name, tc.name,
             u.name, u.email, u.phone,
-            tk.id, tk.ticket_no, tk.pdf_file, tk.status
+            tk.id, tk.ticket_no, tk.pdf_file, tk.status,
+            p.id, p.amount, p.payment_method, p.transaction_ref, p.screenshot_path, p.status, p.created_at
     ";
 
     if ($hasRefundRequests) {
@@ -267,6 +331,11 @@ function fetch_bus_admin_booking_detail(mysqli $conn, int $companyId, int $booki
         ) rr ON rr.booking_id = b.id
     " : "";
 
+    $companyIds = bus_booking_company_scope_ids($conn, $companyId);
+    $params = [$bookingId];
+    $types = 'i';
+    $scopeSql = bus_booking_scope_sql($companyIds, $params, $types);
+
     $sql = "
         SELECT
             b.*,
@@ -311,6 +380,7 @@ function fetch_bus_admin_booking_detail(mysqli $conn, int $companyId, int $booki
             p.amount AS latest_payment_amount,
             p.payment_method AS latest_payment_method,
             p.transaction_ref AS latest_payment_ref,
+            p.screenshot_path AS latest_payment_screenshot_path,
             p.status AS latest_payment_status,
             p.created_at AS latest_payment_created_at
         FROM bookings b
@@ -332,7 +402,7 @@ function fetch_bus_admin_booking_detail(mysqli $conn, int $companyId, int $booki
         {$refundJoin}
         WHERE b.id = ?
           AND b.booking_type = 'bus'
-          AND t.company_id = ?
+          AND {$scopeSql}
         LIMIT 1
     ";
 
@@ -341,7 +411,7 @@ function fetch_bus_admin_booking_detail(mysqli $conn, int $companyId, int $booki
         throw new Exception('Booking detail query prepare failed: ' . $conn->error);
     }
 
-    $stmt->bind_param('ii', $bookingId, $companyId);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result ? $result->fetch_assoc() : null;
