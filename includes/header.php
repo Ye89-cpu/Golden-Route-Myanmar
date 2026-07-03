@@ -19,7 +19,7 @@ $navIs = static function (array $pages) use ($currentPath): string {
     return in_array($currentPath, $pages, true) ? 'active-nav' : '';
 };
 
-$logoPath = BASE_URL . 'assets/images/G.png';
+$logoPath = BASE_URL . 'assets/images/logo.png';
 
 $profileLink = BASE_URL . 'account/profile.php';
 $dashboardLabel = '';

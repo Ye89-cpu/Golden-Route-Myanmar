@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config.php';
 $appTitle = (string) system_setting_runtime_get('app_name', APP_NAME);
 $supportEmail = (string) system_setting_runtime_get('support_email', 'support@example.com');
 $supportPhone = (string) system_setting_runtime_get('support_phone', '+95 9 123 456 789');
-$logoPath = BASE_URL . 'assets/images/G.png';
+$logoPath = BASE_URL . 'assets/images/logo.png';
 $registrationEnabled = system_setting_runtime_bool('registration_enabled', true);
 $currentYear = date('Y');
 
