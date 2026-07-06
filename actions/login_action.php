@@ -23,7 +23,12 @@ if ($email === '' || $password === '') {
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    set_flash('error', 'Please enter a valid email address.');
+    set_flash('error', 'Please enter a valid email address. Format: name@example.com');
+    redirect('login.php');
+}
+
+if (strlen($password) < 8) {
+    set_flash('error', 'Password must be at least 8 characters.');
     redirect('login.php');
 }
 

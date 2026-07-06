@@ -89,34 +89,62 @@ $success = get_flash('success');
                         <div class="alert alert-success rounded-4 mb-4"><?php echo e($success); ?></div>
                     <?php endif; ?>
 
-                    <form action="<?php echo BASE_URL; ?>actions/login_action.php" method="POST" class="auth-modern-form" novalidate>
+                    <form action="<?php echo BASE_URL; ?>actions/login_action.php" method="POST" class="auth-modern-form" data-login-validation novalidate>
                         <div class="auth-modern-field">
-                            <label class="form-label">Email Address</label>
+                            <label class="form-label" for="loginEmail">Email Address</label>
                             <div class="auth-input-wrap">
                                 <span class="auth-input-icon"><i class="bi bi-envelope"></i></span>
                                 <input
                                     type="email"
+                                    id="loginEmail"
                                     name="email"
                                     class="form-control auth-control"
                                     value="<?php echo e(old('email')); ?>"
-                                    placeholder="Enter your email address"
+                                    placeholder="example@gmail.com"
+                                    autocomplete="username"
+                                    inputmode="email"
+                                    aria-describedby="loginEmailFormat loginEmailMessage"
+                                    data-login-email
                                     required
                                 >
                             </div>
+                            <div class="auth-format-hint" id="loginEmailFormat">
+                                <i class="bi bi-info-circle"></i>
+                                Email format: name@example.com
+                            </div>
+                            <div class="auth-field-message" id="loginEmailMessage" data-email-message></div>
                         </div>
 
                         <div class="auth-modern-field">
-                            <label class="form-label">Password</label>
-                            <div class="auth-input-wrap">
+                            <label class="form-label" for="loginPassword">Password</label>
+                            <div class="auth-input-wrap auth-password-wrap">
                                 <span class="auth-input-icon"><i class="bi bi-lock"></i></span>
                                 <input
                                     type="password"
+                                    id="loginPassword"
                                     name="password"
-                                    class="form-control auth-control"
+                                    class="form-control auth-control auth-control-has-toggle"
                                     placeholder="Enter your password"
+                                    autocomplete="current-password"
+                                    minlength="8"
+                                    aria-describedby="loginPasswordRules loginPasswordMessage"
+                                    data-login-password
                                     required
                                 >
+                                <button
+                                    type="button"
+                                    class="auth-toggle-password"
+                                    data-password-toggle
+                                    data-target="#loginPassword"
+                                    aria-label="Show password"
+                                    aria-pressed="false"
+                                >
+                                    <i class="bi bi-eye"></i>
+                                </button>
                             </div>
+
+
+                            <div class="auth-field-message" id="loginPasswordMessage" data-password-message></div>
                         </div>
 
                         <button type="submit" class="btn auth-submit-btn w-100">

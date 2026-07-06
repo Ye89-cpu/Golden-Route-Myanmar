@@ -22,6 +22,7 @@ $email = trim($_POST['email'] ?? '');
 $phone = trim($_POST['phone'] ?? '');
 $password = $_POST['password'] ?? '';
 $passwordConfirmation = $_POST['password_confirmation'] ?? '';
+$errors = [];
 
 save_old_input([
     'name'  => $name,
@@ -29,27 +30,46 @@ save_old_input([
     'phone' => $phone
 ]);
 
-if ($name === '' || $email === '' || $password === '' || $passwordConfirmation === '') {
-    $conn->close();
-    set_flash('error', 'Please fill in all required fields.');
-    redirect('register.php');
+if ($name === '') {
+    $errors['name'] = 'Full Name field is required.';
+} elseif (!preg_match("/^[\p{L}\s.'-]+$/u", $name)) {
+    $errors['name'] = 'Full Name should contain letters only.';
 }
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $conn->close();
-    set_flash('error', 'Please enter a valid email address.');
-    redirect('register.php');
+if ($email === '') {
+    $errors['email'] = 'Email field is required.';
+} elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $errors['email'] = 'Please enter a valid email address.';
 }
 
-if (strlen($password) < 8) {
-    $conn->close();
-    set_flash('error', 'Password must be at least 8 characters.');
-    redirect('register.php');
+if ($phone === '') {
+    $errors['phone'] = 'Phone Number field is required.';
+} elseif (!preg_match('/^[0-9]+$/', $phone)) {
+    $errors['phone'] = 'Phone Number should contain numbers only.';
+} elseif (!preg_match('/^09[0-9]{7,9}$/', $phone)) {
+    $errors['phone'] = 'Please enter a valid phone number.';
 }
 
-if ($password !== $passwordConfirmation) {
+if ($password === '') {
+    $errors['password'] = 'Password field is required.';
+} elseif (strlen($password) < 8) {
+    $errors['password'] = 'Password must be at least 8 characters.';
+} elseif (!preg_match('/[A-Za-z]/', $password)) {
+    $errors['password'] = 'Password must contain at least one letter.';
+} elseif (!preg_match('/[0-9]/', $password)) {
+    $errors['password'] = 'Password must contain at least one number.';
+}
+
+if ($passwordConfirmation === '') {
+    $errors['password_confirmation'] = 'Confirm Password field is required.';
+} elseif ($password !== '' && $password !== $passwordConfirmation) {
+    $errors['password_confirmation'] = 'Passwords do not match.';
+}
+
+if (!empty($errors)) {
     $conn->close();
-    set_flash('error', 'Password and confirm password do not match.');
+    $_SESSION['register_errors'] = $errors;
+    set_flash('error', 'Please correct the highlighted fields.');
     redirect('register.php');
 }
 
@@ -63,36 +83,35 @@ if ($result->num_rows > 0) {
     $stmt->close();
     $conn->close();
 
+    $_SESSION['register_errors'] = ['email' => 'This email is already registered.'];
     set_flash('error', 'This email is already registered.');
     redirect('register.php');
 }
 $stmt->close();
 
-if ($phone !== '') {
-    $checkPhoneSql = "SELECT id FROM users WHERE phone = ? LIMIT 1";
-    $stmt = $conn->prepare($checkPhoneSql);
-    $stmt->bind_param('s', $phone);
-    $stmt->execute();
-    $result = $stmt->get_result();
+$checkPhoneSql = "SELECT id FROM users WHERE phone = ? LIMIT 1";
+$stmt = $conn->prepare($checkPhoneSql);
+$stmt->bind_param('s', $phone);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    if ($result->num_rows > 0) {
-        $stmt->close();
-        $conn->close();
-
-        set_flash('error', 'This phone number is already registered.');
-        redirect('register.php');
-    }
+if ($result->num_rows > 0) {
     $stmt->close();
+    $conn->close();
+
+    $_SESSION['register_errors'] = ['phone' => 'This phone number is already registered.'];
+    set_flash('error', 'This phone number is already registered.');
+    redirect('register.php');
 }
+$stmt->close();
 
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 $role = 'customer';
 $status = 'active';
-$phoneValue = ($phone === '') ? null : $phone;
 
 $insertSql = "INSERT INTO users (name, email, phone, password, role, status) VALUES (?, ?, ?, ?, ?, ?)";
 $stmt = $conn->prepare($insertSql);
-$stmt->bind_param('ssssss', $name, $email, $phoneValue, $hashedPassword, $role, $status);
+$stmt->bind_param('ssssss', $name, $email, $phone, $hashedPassword, $role, $status);
 
 if ($stmt->execute()) {
     $stmt->close();

@@ -196,6 +196,6 @@ $isUserLoggedIn = !empty($_SESSION['user']);
 </footer>
 
 <script src="<?= BASE_URL ?>assets/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="<?= BASE_URL ?>assets/js/app-ui.js"></script>
+<script src="<?= BASE_URL ?>assets/js/app-ui.js?v=20260706-register-password-conditions"></script>
 </body>
 </html>

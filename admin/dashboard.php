@@ -20,6 +20,8 @@ $summary = [
     'suspended_count' => 0,
     'total_bookings' => 0,
     'pending_payments' => 0,
+    'unpaid_bookings' => 0,
+    'pending_payment_reviews' => 0,
     'refund_requests' => 0,
     'notifications' => 0,
 ];
@@ -35,7 +37,19 @@ $cardsSql = [
         FROM companies
     ",
     'bookings' => "SELECT COUNT(*) AS total FROM bookings",
-    'pending_payments' => "SELECT COUNT(*) AS total FROM payments WHERE status = 'submitted'",
+    'pending_payments' => "
+        SELECT COUNT(*) AS total
+        FROM bookings b
+        WHERE b.payment_status IN ('unpaid', 'pending_review')
+           OR EXISTS (
+                SELECT 1
+                FROM payments p
+                WHERE p.booking_id = b.id
+                  AND p.status = 'submitted'
+           )
+    ",
+    'unpaid_bookings' => "SELECT COUNT(*) AS total FROM bookings WHERE payment_status = 'unpaid'",
+    'pending_payment_reviews' => "SELECT COUNT(*) AS total FROM payments WHERE status = 'submitted'",
     'refund_requests' => "SELECT COUNT(*) AS total FROM refund_requests",
     'notifications' => "SELECT COUNT(*) AS total FROM notifications",
 ];
@@ -55,7 +69,7 @@ try {
         $stmt->close();
     }
 
-    foreach (['bookings', 'pending_payments', 'refund_requests', 'notifications'] as $key) {
+    foreach (['bookings', 'pending_payments', 'unpaid_bookings', 'pending_payment_reviews', 'refund_requests', 'notifications'] as $key) {
         $stmt = $conn->prepare($cardsSql[$key]);
 
         if ($stmt) {
@@ -171,8 +185,8 @@ function adminStatusBadgeClass(string $status): string
 
             <div class="col-lg-4">
                 <div class="d-grid gap-2">
-                    <a href="<?php echo BASE_URL; ?>admin/companies.php" class="btn btn-brand">
-                        + Add Company / Admin
+                    <a href="<?php echo BASE_URL; ?>admin/events.php#event-form-card" class="btn btn-brand">
+                        + Add Event
                     </a>
                     <a href="<?php echo BASE_URL; ?>admin/business_reports.php" class="btn btn-nav-soft">
                         Open Business Reports
@@ -211,7 +225,7 @@ function adminStatusBadgeClass(string $status): string
             <div class="metric-card">
                 <span>Pending Payments</span>
                 <strong><?php echo e($summary['pending_payments']); ?></strong>
-                <small>Proofs waiting review</small>
+                <small>Unpaid / pending review bookings</small>
             </div>
         </div>
     </div>
@@ -225,7 +239,7 @@ function adminStatusBadgeClass(string $status): string
                         <p>Open common admin modules quickly.</p>
                     </div>
 
-                    <a href="<?php echo BASE_URL; ?>admin/events.php" class="btn btn-sm btn-brand">
+                    <a href="<?php echo BASE_URL; ?>admin/events.php#event-form-card" class="btn btn-sm btn-brand">
                         + Add Event
                     </a>
                 </div>
@@ -341,12 +355,12 @@ function adminStatusBadgeClass(string $status): string
                         </div>
                     </a>
 
-                    <a href="<?php echo BASE_URL; ?>admin/events.php" class="quick-link-card featured-link-card">
+                    <a href="<?php echo BASE_URL; ?>admin/events.php#event-form-card" class="quick-link-card featured-link-card">
                         <div class="quick-link-icon">
                             <i class="bi bi-calendar-event"></i>
                         </div>
                         <div class="quick-link-content">
-                            <h4>Events</h4>
+                            <h4>Add Event</h4>
                             <p>Create promotions and travel events</p>
                         </div>
                     </a>
@@ -372,6 +386,36 @@ function adminStatusBadgeClass(string $status): string
                 </div>
 
                 <div class="summary-list">
+                    <div class="summary-row">
+                        <span>Total Bookings</span>
+                        <strong><?php echo e($summary['total_bookings']); ?></strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Pending Payments</span>
+                        <strong><?php echo e($summary['pending_payments']); ?></strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Unpaid Bookings</span>
+                        <strong><?php echo e($summary['unpaid_bookings']); ?></strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Payment Proofs for Review</span>
+                        <strong><?php echo e($summary['pending_payment_reviews']); ?></strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Total Events</span>
+                        <strong><?php echo e($eventSummary['total_events']); ?></strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Active Events</span>
+                        <strong><?php echo e($eventSummary['active_events']); ?></strong>
+                    </div>
+
                     <div class="summary-row">
                         <span>Approved Companies</span>
                         <strong><?php echo e($summary['approved_count']); ?></strong>
@@ -461,8 +505,8 @@ function adminStatusBadgeClass(string $status): string
                                 <?php echo !empty($event['event_date']) ? e($event['event_date']) : 'No event date'; ?>
                             </div>
 
-                            <a href="<?php echo BASE_URL; ?>admin/events.php?edit=<?php echo (int)$event['id']; ?>" class="dashboard-event-link">
-                                Edit event
+                            <a href="<?php echo BASE_URL; ?>admin/events.php?edit=<?php echo (int)$event['id']; ?>#event-form-card" class="dashboard-event-link">
+                                Edit Event
                             </a>
                         </div>
                     </div>
@@ -507,13 +551,13 @@ function adminStatusBadgeClass(string $status): string
                             </div>
                         <?php endforeach; ?>
                     </div>
-
-                    <div class="mt-3">
-                        <a href="<?php echo BASE_URL; ?>admin/companies.php" class="btn btn-nav-soft w-100">
-                            View All Companies
-                        </a>
-                    </div>
                 <?php endif; ?>
+
+                <div class="mt-3">
+                    <a href="<?php echo BASE_URL; ?>admin/companies.php" class="btn btn-nav-soft w-100">
+                        View All Companies
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -552,13 +596,13 @@ function adminStatusBadgeClass(string $status): string
                             </div>
                         <?php endforeach; ?>
                     </div>
-
-                    <div class="mt-3">
-                        <a href="<?php echo BASE_URL; ?>admin/payments.php" class="btn btn-nav-soft w-100">
-                            View All Payments
-                        </a>
-                    </div>
                 <?php endif; ?>
+
+                <div class="mt-3">
+                    <a href="<?php echo BASE_URL; ?>admin/payments.php" class="btn btn-nav-soft w-100">
+                        View All Payments
+                    </a>
+                </div>
             </div>
         </div>
     </div>

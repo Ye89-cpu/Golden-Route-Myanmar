@@ -8,6 +8,18 @@ require_once __DIR__ . '/includes/header.php';
 $error = get_flash('error');
 $success = get_flash('success');
 $registrationEnabled = system_setting_runtime_bool('registration_enabled', true);
+$registerErrors = $_SESSION['register_errors'] ?? [];
+unset($_SESSION['register_errors']);
+
+function register_field_error($errors, $field)
+{
+    return $errors[$field] ?? '';
+}
+
+function register_field_class($errors, $field)
+{
+    return isset($errors[$field]) ? ' is-invalid' : '';
+}
 ?>
 
 <div class="auth-page auth-page-register">
@@ -95,79 +107,141 @@ $registrationEnabled = system_setting_runtime_bool('registration_enabled', true)
                             Customer registration is currently disabled by the administrator.
                         </div>
                     <?php else: ?>
-                        <form action="<?php echo BASE_URL; ?>actions/register_action.php" method="POST" class="auth-modern-form" novalidate>
+                        <form action="<?php echo BASE_URL; ?>actions/register_action.php" method="POST" class="auth-modern-form" data-register-validation novalidate>
                             <div class="auth-modern-field">
-                                <label class="form-label">Full Name</label>
+                                <label class="form-label" for="registerFullName">Full Name</label>
                                 <div class="auth-input-wrap">
                                     <span class="auth-input-icon"><i class="bi bi-person"></i></span>
                                     <input
                                         type="text"
+                                        id="registerFullName"
                                         name="name"
-                                        class="form-control auth-control"
+                                        class="form-control auth-control<?php echo register_field_class($registerErrors, 'name'); ?>"
                                         value="<?php echo e(old('name')); ?>"
                                         placeholder="Enter your full name"
+                                        autocomplete="name"
+                                        aria-describedby="registerNameMessage"
+                                        data-register-name
                                         required
                                     >
+                                </div>
+                                <div class="auth-field-message<?php echo register_field_error($registerErrors, 'name') ? ' is-invalid' : ''; ?>" id="registerNameMessage" data-name-message>
+                                    <?php echo e(register_field_error($registerErrors, 'name')); ?>
                                 </div>
                             </div>
 
                             <div class="auth-modern-field auth-grid-2">
                                 <div>
-                                    <label class="form-label">Email Address</label>
+                                    <label class="form-label" for="registerEmail">Email Address</label>
                                     <div class="auth-input-wrap">
                                         <span class="auth-input-icon"><i class="bi bi-envelope"></i></span>
                                         <input
                                             type="email"
+                                            id="registerEmail"
                                             name="email"
-                                            class="form-control auth-control"
+                                            class="form-control auth-control<?php echo register_field_class($registerErrors, 'email'); ?>"
                                             value="<?php echo e(old('email')); ?>"
                                             placeholder="Enter your email"
+                                            autocomplete="email"
+                                            aria-describedby="registerEmailMessage"
+                                            data-register-email
                                             required
                                         >
+                                    </div>
+                                    <div class="auth-field-message<?php echo register_field_error($registerErrors, 'email') ? ' is-invalid' : ''; ?>" id="registerEmailMessage" data-email-message>
+                                        <?php echo e(register_field_error($registerErrors, 'email')); ?>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label class="form-label">Phone Number</label>
+                                    <label class="form-label" for="registerPhone">Phone Number</label>
                                     <div class="auth-input-wrap">
                                         <span class="auth-input-icon"><i class="bi bi-telephone"></i></span>
                                         <input
                                             type="text"
+                                            id="registerPhone"
                                             name="phone"
-                                            class="form-control auth-control"
+                                            class="form-control auth-control<?php echo register_field_class($registerErrors, 'phone'); ?>"
                                             value="<?php echo e(old('phone')); ?>"
                                             placeholder="09xxxxxxxxx"
+                                            autocomplete="tel"
+                                            inputmode="numeric"
+                                            aria-describedby="registerPhoneMessage"
+                                            data-register-phone
+                                            required
                                         >
+                                    </div>
+                                    <div class="auth-field-message<?php echo register_field_error($registerErrors, 'phone') ? ' is-invalid' : ''; ?>" id="registerPhoneMessage" data-phone-message>
+                                        <?php echo e(register_field_error($registerErrors, 'phone')); ?>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="auth-modern-field auth-grid-2">
                                 <div>
-                                    <label class="form-label">Password</label>
-                                    <div class="auth-input-wrap">
+                                    <label class="form-label" for="registerPassword">Password</label>
+                                    <div class="auth-input-wrap auth-password-wrap">
                                         <span class="auth-input-icon"><i class="bi bi-lock"></i></span>
                                         <input
                                             type="password"
+                                            id="registerPassword"
                                             name="password"
-                                            class="form-control auth-control"
+                                            class="form-control auth-control auth-control-has-toggle<?php echo register_field_class($registerErrors, 'password'); ?>"
                                             placeholder="Create password"
+                                            autocomplete="new-password"
+                                            aria-describedby="registerPasswordMessage registerPasswordRules"
+                                            data-register-password
                                             required
                                         >
+                                        <button
+                                            type="button"
+                                            class="auth-toggle-password"
+                                            data-password-toggle
+                                            data-target="#registerPassword"
+                                            aria-label="Show password"
+                                            aria-pressed="false"
+                                        >
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="auth-field-message<?php echo register_field_error($registerErrors, 'password') ? ' is-invalid' : ''; ?>" id="registerPasswordMessage" data-password-message>
+                                        <?php echo e(register_field_error($registerErrors, 'password')); ?>
+                                    </div>
+                                    <div class="auth-password-rules" id="registerPasswordRules" data-password-rules aria-label="Password requirements">
+                                        <span class="auth-password-rule" data-password-rule="length"><i class="bi bi-circle"></i> At least 8 characters</span>
+                                        <span class="auth-password-rule" data-password-rule="letter"><i class="bi bi-circle"></i> Include letters</span>
+                                        <span class="auth-password-rule" data-password-rule="number"><i class="bi bi-circle"></i> Include numbers</span>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label class="form-label">Confirm Password</label>
-                                    <div class="auth-input-wrap">
+                                    <label class="form-label" for="registerPasswordConfirmation">Confirm Password</label>
+                                    <div class="auth-input-wrap auth-password-wrap">
                                         <span class="auth-input-icon"><i class="bi bi-shield-check"></i></span>
                                         <input
                                             type="password"
+                                            id="registerPasswordConfirmation"
                                             name="password_confirmation"
-                                            class="form-control auth-control"
+                                            class="form-control auth-control auth-control-has-toggle<?php echo register_field_class($registerErrors, 'password_confirmation'); ?>"
                                             placeholder="Confirm password"
+                                            autocomplete="new-password"
+                                            aria-describedby="registerPasswordConfirmationMessage"
+                                            data-register-confirm-password
                                             required
                                         >
+                                        <button
+                                            type="button"
+                                            class="auth-toggle-password"
+                                            data-password-toggle
+                                            data-target="#registerPasswordConfirmation"
+                                            aria-label="Show password"
+                                            aria-pressed="false"
+                                        >
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="auth-field-message<?php echo register_field_error($registerErrors, 'password_confirmation') ? ' is-invalid' : ''; ?>" id="registerPasswordConfirmationMessage" data-confirm-password-message>
+                                        <?php echo e(register_field_error($registerErrors, 'password_confirmation')); ?>
                                     </div>
                                 </div>
                             </div>

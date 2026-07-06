@@ -53,7 +53,7 @@ $profileImageUrl = profile_public_path($currentUser['profile_image'] ?? '');
     <link rel="shortcut icon" type="image/png" href="<?php echo htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8'); ?>">
 
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style.css?v=20260414v4">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=20260706-admin-unit-test3">
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/bootstrap-icons/font/bootstrap-icons.css">
 </head>
 

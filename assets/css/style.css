@@ -1128,6 +1128,109 @@ img {
     box-shadow: 0 0 0 0.22rem rgba(200,155,60,0.12) !important;
 }
 
+.auth-control.is-valid {
+    border-color: rgba(25, 135, 84, 0.54);
+    background: rgba(240, 253, 244, 0.96);
+}
+
+.auth-control.is-invalid {
+    border-color: rgba(220, 53, 69, 0.58);
+    background: rgba(255, 245, 245, 0.96);
+}
+
+.auth-control-has-toggle {
+    padding-right: 3.8rem;
+}
+
+.auth-password-wrap .auth-input-icon {
+    pointer-events: none;
+}
+
+.auth-toggle-password {
+    position:absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 42px;
+    height: 42px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius: 14px;
+    border: 1px solid rgba(148,163,184,0.22);
+    background: rgba(255,255,255,0.82);
+    color: var(--text-soft);
+    transition: var(--transition);
+}
+
+.auth-toggle-password:hover,
+.auth-toggle-password:focus {
+    border-color: rgba(200,155,60,0.34);
+    background: rgba(200,155,60,0.10);
+    color: var(--gold-dark);
+    outline: none;
+}
+
+.auth-format-hint,
+.auth-field-message {
+    display:flex;
+    align-items:center;
+    gap: 7px;
+    min-height: 20px;
+    margin-top: 7px;
+    font-size: 0.82rem;
+    font-weight: 650;
+}
+
+.auth-format-hint {
+    color: var(--text-fade);
+}
+
+.auth-field-message {
+    color: var(--text-fade);
+}
+
+.auth-field-message.is-valid {
+    color: #198754;
+}
+
+.auth-field-message.is-invalid {
+    color: #dc3545;
+}
+
+.auth-password-rules {
+    display:flex;
+    flex-wrap:wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.auth-password-rule {
+    display:inline-flex;
+    align-items:center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.18);
+    background: rgba(248, 250, 252, 0.78);
+    color: var(--text-fade);
+    font-size: 0.78rem;
+    font-weight: 750;
+    transition: var(--transition);
+}
+
+.auth-password-rule.is-valid {
+    border-color: rgba(25, 135, 84, 0.24);
+    background: rgba(240, 253, 244, 0.92);
+    color: #198754;
+}
+
+.auth-password-rule.is-invalid {
+    border-color: rgba(220, 53, 69, 0.20);
+    background: rgba(255, 245, 245, 0.92);
+    color: #dc3545;
+}
+
 .auth-grid-2 {
     display:grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
