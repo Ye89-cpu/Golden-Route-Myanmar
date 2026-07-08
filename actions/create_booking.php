@@ -12,28 +12,74 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $conn = getDBConnection();
 
+function create_booking_text_length(string $value): int
+{
+    return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+}
+
+function create_booking_clean_single_line(string $value): string
+{
+    $value = trim($value);
+    $cleaned = preg_replace('/\s+/u', ' ', $value);
+    return is_string($cleaned) ? $cleaned : $value;
+}
+
+function create_booking_valid_name(string $value): bool
+{
+    $length = create_booking_text_length($value);
+    if ($length < 2 || $length > 120) {
+        return false;
+    }
+
+    return preg_match("/^[\p{L}\p{M}][\p{L}\p{M}\s.'-]*$/u", $value) === 1;
+}
+
+function create_booking_normalize_phone(string $value): string
+{
+    $phone = preg_replace('/[\s()\-]+/', '', trim($value));
+    $phone = is_string($phone) ? $phone : trim($value);
+
+    if (strpos($phone, '0095') === 0) {
+        $phone = '+95' . substr($phone, 4);
+    }
+
+    return $phone;
+}
+
+function create_booking_valid_phone(string $value): bool
+{
+    return preg_match('/^(?:09\d{7,9}|\+959\d{7,9})$/', $value) === 1;
+}
+
+function create_booking_valid_identity(string $value): bool
+{
+    $length = create_booking_text_length($value);
+    if ($length < 4 || $length > 50) {
+        return false;
+    }
+
+    return preg_match('/^[\p{L}\p{M}\p{N}\/().\-\s]+$/u', $value) === 1;
+}
+
 $tripId = (int)($_POST['trip_id'] ?? 0);
+$csrfToken = trim((string)($_POST['csrf_token'] ?? ''));
 $selectedSeatIdsRaw = $_POST['selected_seats'] ?? [];
-$customerNote = trim($_POST['customer_note'] ?? '');
+$customerNote = trim((string)($_POST['customer_note'] ?? ''));
 
-$passengerSeatIds = $_POST['passenger_seat_id'] ?? [];
-$passengerSeatNumbers = $_POST['passenger_seat_number'] ?? [];
-$passengerFullNames = $_POST['passenger_full_name'] ?? [];
-$passengerPhones = $_POST['passenger_phone'] ?? [];
-$passengerNrcPassports = $_POST['passenger_nrc_passport'] ?? [];
-$passengerGenders = $_POST['passenger_gender'] ?? [];
-$passengerAges = $_POST['passenger_age'] ?? [];
-$passengerSpecialNotes = $_POST['passenger_special_note'] ?? [];
-
-$bulkFullName = trim($_POST['booking_full_name'] ?? '');
-$bulkPhone = trim($_POST['booking_phone'] ?? '');
-$bulkNrcPassport = trim($_POST['booking_nrc_passport'] ?? '');
-$bulkGender = trim($_POST['booking_gender'] ?? '');
-$bulkAge = trim($_POST['booking_age'] ?? '');
-$bulkSpecialNote = trim($_POST['booking_special_note'] ?? '');
-$passengerNamesText = trim($_POST['passenger_names_text'] ?? '');
+$bulkFullName = create_booking_clean_single_line((string)($_POST['booking_full_name'] ?? ''));
+$bulkPhone = create_booking_normalize_phone((string)($_POST['booking_phone'] ?? ''));
+$bulkNrcPassport = create_booking_clean_single_line((string)($_POST['booking_nrc_passport'] ?? ''));
+$bulkGender = trim((string)($_POST['booking_gender'] ?? ''));
+$bulkAge = trim((string)($_POST['booking_age'] ?? ''));
+$bulkSpecialNote = create_booking_clean_single_line((string)($_POST['booking_special_note'] ?? ''));
+$passengerNamesText = trim((string)($_POST['passenger_names_text'] ?? ''));
 
 try {
+    $sessionCsrfToken = (string)($_SESSION['booking_csrf_token'] ?? '');
+    if ($csrfToken === '' || $sessionCsrfToken === '' || !hash_equals($sessionCsrfToken, $csrfToken)) {
+        throw new Exception('Your booking form session has expired. Please refresh the checkout page and try again.');
+    }
+
     if ($tripId <= 0) {
         throw new Exception('Invalid trip selected.');
     }
@@ -52,6 +98,57 @@ try {
 
     if (empty($selectedSeatIds)) {
         throw new Exception('Please select valid seats.');
+    }
+
+    if (count($selectedSeatIds) > 100) {
+        throw new Exception('Too many seats were selected in one booking.');
+    }
+
+    if (!create_booking_valid_name($bulkFullName)) {
+        throw new Exception('Please enter a valid full name (2–120 letters, without numbers).');
+    }
+
+    if (!create_booking_valid_phone($bulkPhone)) {
+        throw new Exception('Please enter a valid Myanmar phone number, for example 09xxxxxxxxx or +959xxxxxxxxx.');
+    }
+
+    if (!create_booking_valid_identity($bulkNrcPassport)) {
+        throw new Exception('Please enter a valid NRC or passport number (4–50 characters).');
+    }
+
+    if (!in_array($bulkGender, ['male', 'female', 'other'], true)) {
+        throw new Exception('Please select a valid gender.');
+    }
+
+    if ($bulkAge === '' || !ctype_digit($bulkAge) || (int)$bulkAge > 120) {
+        throw new Exception('Passenger age is required and must be between 0 and 120.');
+    }
+
+    if (create_booking_text_length($bulkSpecialNote) > 200) {
+        throw new Exception('Special note must not exceed 200 characters.');
+    }
+
+    if (create_booking_text_length($customerNote) > 2000) {
+        throw new Exception('Customer note must not exceed 2000 characters.');
+    }
+
+    $optionalNames = [];
+    if ($passengerNamesText !== '') {
+        $nameLines = preg_split('/\r\n|\r|\n/', $passengerNamesText);
+        foreach (is_array($nameLines) ? $nameLines : [] as $nameLine) {
+            $name = create_booking_clean_single_line((string)$nameLine);
+            if ($name === '') {
+                continue;
+            }
+            if (!create_booking_valid_name($name)) {
+                throw new Exception('Each passenger name must contain 2–120 letters and must not contain numbers.');
+            }
+            $optionalNames[] = $name;
+        }
+    }
+
+    if (count($optionalNames) > count($selectedSeatIds)) {
+        throw new Exception('Passenger name count cannot be greater than the selected seat count.');
     }
 
     $conn->begin_transaction();
@@ -156,82 +253,36 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | Validate passenger mapping
+    | Build passenger details for every selected seat
     |--------------------------------------------------------------------------
-    | New bulk workflow: one contact passenger can book many seats quickly.
-    | Old detailed passenger arrays are still supported for backward compatibility.
+    | One verified main contact is required. Optional passenger names can
+    | override the contact name line-by-line for the selected seats.
     */
     $passengerMap = [];
 
-    $usingBulkPassenger = $bulkFullName !== '' && (
-        !is_array($passengerFullNames) ||
-        count(array_filter(array_map('trim', $passengerFullNames))) !== count($selectedSeatIds)
-    );
+    foreach ($selectedSeatIds as $index => $seatId) {
+        $seatNumber = (string)($seatRows[$seatId]['seat_number'] ?? '');
+        $passengerName = $optionalNames[$index] ?? $bulkFullName;
+        $seatLabel = $seatNumber !== '' ? 'Seat ' . $seatNumber : '';
+        $specialNote = $bulkSpecialNote;
 
-    if ($usingBulkPassenger) {
-        if ($bulkGender !== '' && !in_array($bulkGender, ['male', 'female', 'other'], true)) {
-            throw new Exception('Invalid gender selected.');
+        if ($seatLabel !== '') {
+            $specialNote = $specialNote !== '' ? $specialNote . ' | ' . $seatLabel : $seatLabel;
         }
 
-        if ($bulkAge !== '' && (!ctype_digit((string)$bulkAge) || (int)$bulkAge < 0)) {
-            throw new Exception('Passenger age must be a valid number.');
+        if (create_booking_text_length($specialNote) > 255) {
+            throw new Exception('Special note is too long after seat information is added.');
         }
 
-        $optionalNames = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $passengerNamesText))));
-        $index = 0;
-
-        foreach ($selectedSeatIds as $seatId) {
-            $seatNumber = (string)($seatRows[$seatId]['seat_number'] ?? '');
-            $name = $optionalNames[$index] ?? $bulkFullName;
-
-            $passengerMap[$seatId] = [
-                'seat_number'  => $seatNumber,
-                'full_name'    => $name,
-                'phone'        => $bulkPhone,
-                'nrc_passport' => $bulkNrcPassport,
-                'gender'       => $bulkGender,
-                'age'          => $bulkAge,
-                'special_note' => trim($bulkSpecialNote . ($seatNumber !== '' ? ' | Seat ' . $seatNumber : '')),
-            ];
-            $index++;
-        }
-    } else {
-        if (!is_array($passengerSeatIds) || !is_array($passengerFullNames)) {
-            throw new Exception('Passenger details must match the number of selected seats.');
-        }
-
-        for ($i = 0; $i < count($passengerSeatIds); $i++) {
-            $seatId = (int)$passengerSeatIds[$i];
-            $fullName = trim($passengerFullNames[$i] ?? '');
-
-            if (!in_array($seatId, $selectedSeatIds, true)) {
-                throw new Exception('Passenger seat mapping is invalid.');
-            }
-
-            if ($fullName === '') {
-                throw new Exception('Each selected seat must have a passenger full name.');
-            }
-
-            if (isset($passengerMap[$seatId])) {
-                throw new Exception('Duplicate passenger information detected for a seat.');
-            }
-
-            $passengerMap[$seatId] = [
-                'seat_number'  => trim($passengerSeatNumbers[$i] ?? ''),
-                'full_name'    => $fullName,
-                'phone'        => trim($passengerPhones[$i] ?? ''),
-                'nrc_passport' => trim($passengerNrcPassports[$i] ?? ''),
-                'gender'       => trim($passengerGenders[$i] ?? ''),
-                'age'          => trim($passengerAges[$i] ?? ''),
-                'special_note' => trim($passengerSpecialNotes[$i] ?? ''),
-            ];
-        }
-    }
-
-    foreach ($selectedSeatIds as $seatId) {
-        if (!isset($passengerMap[$seatId])) {
-            throw new Exception('Passenger details are missing for one or more seats.');
-        }
+        $passengerMap[$seatId] = [
+            'seat_number'  => $seatNumber,
+            'full_name'    => $passengerName,
+            'phone'        => $bulkPhone,
+            'nrc_passport' => $bulkNrcPassport,
+            'gender'       => $bulkGender,
+            'age'          => $bulkAge,
+            'special_note' => $specialNote,
+        ];
     }
 
     /*
@@ -268,7 +319,7 @@ try {
     }
 
     $bookingStmt->bind_param(
-        'sisidssss',
+        'sisiidsss',
         $bookingCode,
         $userId,
         $bookingType,
@@ -450,12 +501,15 @@ try {
 
     $conn->close();
 
-    $successMessage = 'Booking created successfully. Booking Code: ' . $bookingCode . '. Status: pending. Payment status: unpaid.';
+    unset($_SESSION['booking_csrf_token']);
+    clear_old_input();
+
+    $successMessage = 'Booking created successfully. Booking Code: ' . $bookingCode . '. Please submit your payment proof.';
     if ($passengerCount >= 3) {
         $successMessage .= ' Reminder: Please bring NRC / ID card for all passengers.';
     }
     set_flash('success', $successMessage);
-    redirect('customer/profile.php');
+    redirect('payment.php?booking_id=' . $bookingId);
 
 } catch (Throwable $e) {
     try {
@@ -467,6 +521,19 @@ try {
         $conn->close();
     } catch (Throwable $closeError) {
     }
+
+    save_old_input([
+        'trip_id' => $tripId,
+        'selected_seats' => is_array($selectedSeatIdsRaw) ? $selectedSeatIdsRaw : [],
+        'booking_full_name' => $bulkFullName,
+        'booking_phone' => $bulkPhone,
+        'booking_nrc_passport' => $bulkNrcPassport,
+        'booking_gender' => $bulkGender,
+        'booking_age' => $bulkAge,
+        'booking_special_note' => $bulkSpecialNote,
+        'passenger_names_text' => $passengerNamesText,
+        'customer_note' => $customerNote,
+    ]);
 
     set_flash('error', $e->getMessage());
     redirect('checkout.php?trip_id=' . $tripId);
