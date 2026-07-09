@@ -40,29 +40,76 @@ function submit_payment_safe_file_name(string $name): string
 
 function submit_payment_prepare_upload_folder(string $folder): void
 {
-    if (!is_dir($folder)) {
-        if (!@mkdir($folder, 0777, true)) {
-            throw new Exception('Failed to create upload folder: ' . $folder);
-        }
+    if (!is_dir($folder) && !@mkdir($folder, 0755, true) && !is_dir($folder)) {
+        throw new Exception('Payment proof upload folder could not be created.');
     }
 
-    @chmod($folder, 0777);
-
     if (!is_writable($folder)) {
-        throw new Exception(
-            'Upload folder is not writable. Please run: sudo chmod -R 777 uploads'
-        );
+        throw new Exception('Payment proof upload folder is not writable. Please check the server folder permissions.');
+    }
+}
+
+function submit_payment_text_length(string $value): int
+{
+    return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+}
+
+function submit_payment_clean_single_line(string $value): string
+{
+    $value = trim($value);
+    $cleaned = preg_replace('/\s+/u', ' ', $value);
+    return is_string($cleaned) ? $cleaned : $value;
+}
+
+function submit_payment_clean_notes(string $value): string
+{
+    $value = str_replace(["\r\n", "\r"], "\n", trim($value));
+    $cleaned = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value);
+    return is_string($cleaned) ? $cleaned : $value;
+}
+
+function submit_payment_valid_transaction_reference(string $value): bool
+{
+    $length = submit_payment_text_length($value);
+    if ($length < 4 || $length > 100) {
+        return false;
+    }
+
+    return preg_match('/^[A-Za-z0-9][A-Za-z0-9 ._\/#:()\-]{3,99}$/', $value) === 1;
+}
+
+function submit_payment_upload_error_message(int $error): string
+{
+    switch ($error) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'The payment screenshot is larger than the server upload limit.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'The payment screenshot was only partially uploaded. Please try again.';
+        case UPLOAD_ERR_NO_FILE:
+            return 'Please upload a payment screenshot.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'The server temporary upload folder is unavailable.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'The server could not save the uploaded screenshot.';
+        case UPLOAD_ERR_EXTENSION:
+            return 'The screenshot upload was stopped by a server extension.';
+        default:
+            return 'The payment screenshot upload failed. Please try again.';
     }
 }
 
 $currentUserId = (int) current_user_id();
 
 $bookingId = (int)($_POST['booking_id'] ?? 0);
+$csrfToken = trim((string)($_POST['csrf_token'] ?? ''));
 $paymentMethod = trim((string)($_POST['payment_method'] ?? ''));
-$transactionRef = trim((string)($_POST['transaction_ref'] ?? ''));
-$notes = trim((string)($_POST['notes'] ?? ''));
+$transactionRef = submit_payment_clean_single_line((string)($_POST['transaction_ref'] ?? ''));
+$notes = submit_payment_clean_notes((string)($_POST['notes'] ?? ''));
 
 submit_payment_store_old_input([
+    '_form' => 'payment',
+    'booking_id' => $bookingId,
     'payment_method' => $paymentMethod,
     'transaction_ref' => $transactionRef,
     'notes' => $notes,
@@ -80,8 +127,25 @@ if ($bookingId <= 0) {
     redirect('customer/bookings.php');
 }
 
+$sessionCsrfToken = (string)($_SESSION['payment_csrf_token'] ?? '');
+if ($csrfToken === '' || $sessionCsrfToken === '' || !hash_equals($sessionCsrfToken, $csrfToken)) {
+    set_flash('error', 'Your payment form session has expired. Please refresh the page and try again.');
+    submit_payment_redirect($bookingId);
+}
+
 if (!in_array($paymentMethod, $allowedPaymentMethods, true)) {
     set_flash('error', 'Please select a valid payment method.');
+    submit_payment_redirect($bookingId);
+}
+
+if (!submit_payment_valid_transaction_reference($transactionRef)) {
+    set_flash('error', 'Transaction or receipt reference is required and must contain 4–100 valid characters.');
+    submit_payment_redirect($bookingId);
+}
+
+$notesLength = submit_payment_text_length($notes);
+if ($notesLength < 5 || $notesLength > 1000) {
+    set_flash('error', 'Payment notes are required and must contain 5–1000 characters.');
     submit_payment_redirect($bookingId);
 }
 
@@ -132,11 +196,38 @@ try {
         throw new Exception('A payment proof is already submitted and waiting for review.');
     }
 
-    if (($booking['status'] ?? '') === 'cancelled') {
-        throw new Exception('Cancelled bookings cannot accept payment.');
+    if (in_array(($booking['status'] ?? ''), ['cancelled', 'completed'], true)) {
+        throw new Exception('This booking can no longer accept payment.');
     }
 
     $amount = (float)($booking['total_amount'] ?? 0);
+    if ($amount <= 0) {
+        throw new Exception('The booking amount is invalid. Please contact support.');
+    }
+
+    $duplicateReferenceSql = "
+        SELECT id
+        FROM payments
+        WHERE payment_method = ?
+          AND transaction_ref = ?
+          AND status IN ('submitted', 'verified')
+          AND booking_id <> ?
+        LIMIT 1
+        FOR UPDATE
+    ";
+    $duplicateReferenceStmt = $conn->prepare($duplicateReferenceSql);
+    if (!$duplicateReferenceStmt) {
+        throw new Exception('Failed to validate the transaction reference.');
+    }
+    $duplicateReferenceStmt->bind_param('ssi', $paymentMethod, $transactionRef, $bookingId);
+    $duplicateReferenceStmt->execute();
+    $duplicateReferenceResult = $duplicateReferenceStmt->get_result();
+    $duplicateReferenceExists = $duplicateReferenceResult && $duplicateReferenceResult->fetch_assoc();
+    $duplicateReferenceStmt->close();
+
+    if ($duplicateReferenceExists) {
+        throw new Exception('This transaction or receipt reference has already been used for another payment.');
+    }
 
     /*
         Screenshot upload is required for payment proof.
@@ -153,7 +244,7 @@ try {
     $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
     if ($uploadError !== UPLOAD_ERR_OK) {
-        throw new Exception('Payment screenshot upload failed. Error code: ' . $uploadError);
+        throw new Exception(submit_payment_upload_error_message($uploadError));
     }
 
     $tmpPath = (string)($file['tmp_name'] ?? '');
@@ -190,6 +281,27 @@ try {
         throw new Exception('Only JPG, PNG, and WEBP screenshots are allowed.');
     }
 
+    $imageInfo = @getimagesize($tmpPath);
+    if (!is_array($imageInfo) || empty($imageInfo[0]) || empty($imageInfo[1])) {
+        throw new Exception('The uploaded file is not a valid image.');
+    }
+
+    $imageWidth = (int)$imageInfo[0];
+    $imageHeight = (int)$imageInfo[1];
+    $detectedImageMime = (string)($imageInfo['mime'] ?? '');
+
+    if ($detectedImageMime !== '' && $detectedImageMime !== $mimeType) {
+        throw new Exception('The screenshot file type does not match its image content.');
+    }
+
+    if ($imageWidth < 200 || $imageHeight < 200) {
+        throw new Exception('The screenshot resolution is too small. Minimum size is 200 × 200 pixels.');
+    }
+
+    if ($imageWidth > 12000 || $imageHeight > 12000 || ($imageWidth * $imageHeight) > 50000000) {
+        throw new Exception('The screenshot dimensions are too large.');
+    }
+
     $extension = $allowedMimeToExt[$mimeType];
 
     $uploadDirFs = dirname(__DIR__) . '/uploads/payment_proofs';
@@ -208,7 +320,7 @@ try {
         );
     }
 
-    @chmod($destinationFs, 0666);
+    @chmod($destinationFs, 0644);
 
     $savedScreenshotFs = $destinationFs;
     $screenshotPath = $uploadDirDb . '/' . $safeName;
@@ -228,7 +340,7 @@ try {
             created_at,
             updated_at
         )
-        VALUES (?, ?, ?, NULLIF(?, ''), ?, NULLIF(?, ''), ?, NOW(), NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     ";
 
     $paymentStmt = $conn->prepare($paymentSql);
@@ -331,6 +443,7 @@ try {
     $conn->close();
 
     submit_payment_clear_old_input();
+    unset($_SESSION['payment_csrf_token']);
 
     set_flash('success', 'Payment submitted successfully. Your payment is now pending review.');
     submit_payment_redirect($bookingId);
