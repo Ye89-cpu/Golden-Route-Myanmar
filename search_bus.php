@@ -158,6 +158,7 @@ if ($selectedCompanyId > 0) {
 $fromCityId = (int)($_GET['from_city_id'] ?? 0);
 $toCityId = (int)($_GET['to_city_id'] ?? 0);
 $travelDate = trim((string)($_GET['travel_date'] ?? ''));
+$minimumTravelDate = date('Y-m-d');
 
 $fromName = trim((string)($_GET['from'] ?? ''));
 $toName = trim((string)($_GET['to'] ?? ''));
@@ -221,6 +222,8 @@ if ($isSubmitted) {
         $formError = 'From city and To city cannot be the same.';
     } elseif (!is_valid_date_ymd($travelDate)) {
         $formError = 'Invalid travel date format.';
+    } elseif ($travelDate < $minimumTravelDate) {
+        $formError = 'Past travel dates are not allowed. Please choose today or a future date.';
     } else {
         // Main fix: ensure the selected city pair has open VIP/Normal trip options for the selected date.
         // This makes Any City → Any City searchable and bookable in the demo project.
@@ -580,8 +583,18 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
 
                             <div class="col-md-5">
-                                <label class="form-label fw-bold">Travel Date</label>
-                                <input type="date" name="travel_date" class="form-control" value="<?php echo e($travelDate); ?>" required style="min-height:52px;border-radius:16px;">
+                                <label class="form-label fw-bold" for="travelDateInput">Travel Date</label>
+                                <input
+                                    type="date"
+                                    name="travel_date"
+                                    id="travelDateInput"
+                                    class="form-control"
+                                    value="<?php echo e($travelDate); ?>"
+                                    min="<?php echo e($minimumTravelDate); ?>"
+                                    aria-describedby="travelDateHelp"
+                                    required
+                                    style="min-height:52px;border-radius:16px;">
+                                <div id="travelDateHelp" class="form-text">Past dates cannot be searched. Choose today or a future date.</div>
                             </div>
 
                             <div class="col-md-7">
@@ -786,7 +799,43 @@ require_once __DIR__ . '/includes/header.php';
     const toInput = document.getElementById('toCityInput');
     const swapBtn = document.getElementById('swapCitiesBtn');
     const cityButtons = document.querySelectorAll('.popular-city-chip');
+    const searchForm = document.getElementById('busSearchForm');
+    const travelDateInput = document.getElementById('travelDateInput');
     let lastFocused = fromInput;
+
+    function validateTravelDate() {
+        if (!travelDateInput) {
+            return true;
+        }
+
+        travelDateInput.setCustomValidity('');
+
+        if (travelDateInput.value && travelDateInput.min && travelDateInput.value < travelDateInput.min) {
+            travelDateInput.setCustomValidity('Past travel dates are not allowed. Please choose today or a future date.');
+            return false;
+        }
+
+        return true;
+    }
+
+    if (travelDateInput) {
+        travelDateInput.addEventListener('input', validateTravelDate);
+        travelDateInput.addEventListener('change', function () {
+            if (!validateTravelDate()) {
+                travelDateInput.reportValidity();
+            }
+        });
+    }
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', function (event) {
+            if (!validateTravelDate()) {
+                event.preventDefault();
+                travelDateInput.reportValidity();
+                travelDateInput.focus();
+            }
+        });
+    }
 
     [fromInput, toInput].forEach(input => {
         input.addEventListener('focus', () => lastFocused = input);
