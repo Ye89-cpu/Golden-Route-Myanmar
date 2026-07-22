@@ -66,7 +66,340 @@ $checkoutOld = static function (string $key, $default = '') use ($checkoutOldInp
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<div class="container py-5">
+<style>
+.checkout-seat-page {
+    background:
+        radial-gradient(circle at 8% 2%, rgba(200,149,57,.13), transparent 24%),
+        linear-gradient(180deg, #f8f5ef 0%, #f5f7fb 100%);
+    min-height: 75vh;
+}
+
+.checkout-seat-page .checkout-header {
+    padding: 28px 30px;
+    align-items: center;
+    border: 1px solid rgba(20,34,60,.08);
+    border-radius: 26px;
+    background: rgba(255,255,255,.90);
+    box-shadow: 0 16px 42px rgba(20,34,60,.07);
+}
+
+.checkout-seat-page .trip-summary-shell {
+    border: 0;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 88% 10%, rgba(246,201,105,.20), transparent 25%),
+        linear-gradient(135deg, #14233e, #24446f);
+    color: #fff;
+    box-shadow: 0 25px 55px rgba(20,35,62,.20);
+}
+
+.checkout-seat-page .trip-summary-shell h3,
+.checkout-seat-page .trip-summary-shell strong,
+.checkout-seat-page .trip-price-value {
+    color: #fff;
+}
+
+.checkout-seat-page .trip-summary-shell small,
+.checkout-seat-page .trip-summary-shell span,
+.checkout-seat-page .trip-price-label {
+    color: rgba(255,255,255,.70);
+}
+
+.checkout-seat-page .trip-meta-box,
+.checkout-seat-page .trip-price-panel {
+    border-color: rgba(255,255,255,.13);
+    background: rgba(255,255,255,.09);
+    box-shadow: none;
+}
+
+.checkout-seat-page .panel-card {
+    border: 1px solid rgba(20,34,60,.08);
+    border-radius: 28px;
+    background: rgba(255,255,255,.94);
+    box-shadow: 0 20px 48px rgba(20,34,60,.08);
+}
+
+.checkout-seat-page .panel-card-header {
+    display: block;
+}
+
+.checkout-seat-page .panel-card-header h4 {
+    margin-bottom: 5px;
+    color: #17243d;
+    font-weight: 850;
+}
+
+.checkout-seat-page .panel-card-header p {
+    margin: 0;
+    color: #667085;
+}
+
+.checkout-seat-page .seat-legend-modern {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-bottom: 15px;
+}
+
+.checkout-seat-page .seat-legend-modern span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border: 1px solid rgba(20,34,60,.08);
+    border-radius: 999px;
+    background: #fff;
+    color: #5f6978;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+.checkout-seat-page .seat-legend-modern i {
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    border-radius: 4px;
+}
+
+.checkout-seat-page .legend-seat-normal { background: #f8fafc; border: 1px solid #cfd7e3; }
+.checkout-seat-page .legend-seat-vip { background: #f8e9c6; border: 1px solid #d7a84f; }
+.checkout-seat-page .legend-seat-selected { background: #1d6b48; border: 1px solid #1d6b48; }
+.checkout-seat-page .legend-seat-booked { background: #d9dee6; border: 1px solid #c5cbd5; }
+
+.checkout-seat-page .bus-cabin-shell {
+    position: relative;
+    max-width: 590px;
+    margin: 0 auto;
+    padding: 18px 18px 24px;
+    border: 3px solid #263852;
+    border-radius: 38px 38px 26px 26px;
+    background:
+        linear-gradient(90deg, rgba(20,35,62,.035) 1px, transparent 1px) 0 0/24px 24px,
+        #eef2f6;
+    box-shadow:
+        inset 0 0 0 6px rgba(255,255,255,.78),
+        0 20px 45px rgba(20,35,62,.15);
+}
+
+.checkout-seat-page .bus-cabin-shell::before,
+.checkout-seat-page .bus-cabin-shell::after {
+    content: '';
+    position: absolute;
+    top: 112px;
+    width: 8px;
+    height: 68px;
+    border-radius: 8px;
+    background: #263852;
+}
+
+.checkout-seat-page .bus-cabin-shell::before { left: -8px; }
+.checkout-seat-page .bus-cabin-shell::after { right: -8px; }
+
+.checkout-seat-page .bus-front-zone {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 13px 15px;
+    border-radius: 24px 24px 16px 16px;
+    background: linear-gradient(135deg, #dce6f1, #f8fafc);
+    border: 1px solid rgba(20,35,62,.10);
+}
+
+.checkout-seat-page .bus-windshield {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #203b61, #4a6d95);
+    color: rgba(255,255,255,.82);
+    font-size: .76rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.checkout-seat-page .driver-cockpit {
+    width: 54px;
+    height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 17px;
+    background: #15243d;
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 750;
+}
+
+.checkout-seat-page .driver-cockpit i {
+    font-size: 1rem;
+    margin-bottom: 2px;
+    color: #efc76f;
+}
+
+.checkout-seat-page .bus-direction-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 2px 0 12px;
+    color: #778295;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+.checkout-seat-page .seat-board-theme {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow-x: auto;
+}
+
+.checkout-seat-page .seat-row-theme {
+    min-width: max-content;
+    padding: 9px 11px;
+    margin-bottom: 8px;
+    border: 0;
+    border-radius: 15px;
+    background: rgba(255,255,255,.66);
+}
+
+.checkout-seat-page .seat-row-theme:last-child {
+    margin-bottom: 0;
+}
+
+.checkout-seat-page .seat-row-label {
+    min-width: 56px;
+    color: #758095;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.checkout-seat-page .seat-box-theme,
+.checkout-seat-page .seat-empty-theme,
+.checkout-seat-page .seat-booked-theme,
+.checkout-seat-page .seat-vip-theme,
+.checkout-seat-page .seat-normal-theme {
+    position: relative;
+    width: 50px;
+    height: 48px;
+    border-radius: 13px 13px 10px 10px;
+    font-size: .82rem;
+    font-weight: 900;
+}
+
+.checkout-seat-page .seat-box-theme::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 7px;
+    right: 7px;
+    height: 7px;
+    border-radius: 5px;
+    background: currentColor;
+    opacity: .12;
+}
+
+.checkout-seat-page .seat-normal-theme {
+    border: 1px solid #c9d2df;
+    background: #fff;
+    color: #243650;
+    box-shadow: 0 5px 10px rgba(20,35,62,.06);
+}
+
+.checkout-seat-page .seat-vip-theme {
+    border: 1px solid #d3a247;
+    background: linear-gradient(180deg, #fff8e8, #f8e6be);
+    color: #8c5d10;
+    box-shadow: 0 5px 12px rgba(179,120,22,.10);
+}
+
+.checkout-seat-page .seat-booked-theme {
+    border: 1px solid #c8ced8;
+    background: #dce1e8;
+    color: #8d96a5;
+    text-decoration: line-through;
+    box-shadow: none;
+}
+
+.checkout-seat-page .seat-empty-theme {
+    border: 1px dashed rgba(117,128,149,.25);
+    background: transparent;
+    color: rgba(117,128,149,.28);
+}
+
+.checkout-seat-page .seat-select-wrap label:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 18px rgba(20,35,62,.12);
+}
+
+.checkout-seat-page .seat-checkbox:checked + label,
+.checkout-seat-page .seat-checkbox:checked + label.seat-normal-theme,
+.checkout-seat-page .seat-checkbox:checked + label.seat-vip-theme {
+    border-color: #155d3f !important;
+    background: linear-gradient(145deg, #2e8b63, #176044) !important;
+    color: #fff !important;
+    box-shadow: 0 10px 22px rgba(23,96,68,.28);
+    transform: translateY(-2px);
+}
+
+.checkout-seat-page .bus-exit-zone {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 15px;
+    padding: 10px 13px;
+    border-radius: 14px;
+    background: rgba(20,35,62,.055);
+    color: #6e798a;
+    font-size: .73rem;
+    font-weight: 750;
+}
+
+.checkout-seat-page .booking-totals-box {
+    padding: 18px;
+    border: 1px solid rgba(200,149,57,.18);
+    background: linear-gradient(135deg, rgba(200,149,57,.12), rgba(255,255,255,.8));
+}
+
+.checkout-seat-page .booking-totals-box strong {
+    color: #17243d;
+    font-size: 1.02rem;
+}
+
+.checkout-seat-page .selected-seat-pill {
+    background: #176044;
+    border-color: #176044;
+    color: #fff;
+}
+
+.checkout-seat-page .passenger-theme-card {
+    background: #f8fafc;
+}
+
+@media (max-width: 575.98px) {
+    .checkout-seat-page .checkout-header { padding: 23px 20px; }
+    .checkout-seat-page .bus-cabin-shell { padding: 13px 11px 18px; border-radius: 28px 28px 22px 22px; }
+    .checkout-seat-page .seat-row-label { min-width: 48px; }
+    .checkout-seat-page .seat-box-theme,
+    .checkout-seat-page .seat-empty-theme,
+    .checkout-seat-page .seat-booked-theme,
+    .checkout-seat-page .seat-vip-theme,
+    .checkout-seat-page .seat-normal-theme { width: 43px; height: 43px; }
+    .checkout-seat-page .seat-aisle-gap { width: 18px; flex-basis: 18px; }
+}
+</style>
+
+<main class="checkout-seat-page py-5">
+    <div class="container">
     <div class="checkout-header mb-4">
         <div>
             <span class="section-kicker">Checkout</span>
@@ -160,70 +493,85 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="hidden" name="csrf_token" value="<?php echo e($bookingCsrfToken); ?>">
 
                 <div class="row g-4">
-                    <div class="col-lg-6">
+                    <div class="col-lg-7">
                         <div class="panel-card h-100">
                             <div class="panel-card-header">
-                                <h4>Select Seats</h4>
-                                <p>Choose one or more seats. Passenger forms will appear automatically.</p>
+                                <h4><i class="bi bi-grid-3x3-gap me-2"></i>Select Your Seats</h4>
+                                <p>Choose available seats from the bus layout. Selected seats will appear in green.</p>
                             </div>
 
-                            <div class="seat-legend">
-                                <span><i class="legend-dot legend-normal"></i> Normal</span>
-                                <span><i class="legend-dot legend-vip"></i> VIP</span>
-                                <span><i class="legend-dot legend-booked"></i> Booked</span>
+                            <div class="seat-legend-modern">
+                                <span><i class="legend-seat-normal"></i> Normal</span>
+                                <span><i class="legend-seat-vip"></i> VIP</span>
+                                <span><i class="legend-seat-selected"></i> Selected</span>
+                                <span><i class="legend-seat-booked"></i> Booked</span>
                             </div>
 
-                            <div class="seat-board-theme mt-3">
-                                <?php foreach ($rows as $rowNo => $rowSeats): ?>
-                                    <div class="seat-row-theme">
-                                        <div class="seat-row-label">Row <?php echo e($rowNo); ?></div>
+                            <div class="bus-cabin-shell">
+                                <div class="bus-front-zone">
+                                    <div class="bus-windshield">Front of Bus</div>
+                                    <div class="driver-cockpit"><i class="bi bi-steering-wheel"></i>Driver</div>
+                                </div>
+                                <div class="bus-direction-label"><i class="bi bi-arrow-up"></i> Travel direction</div>
 
-                                        <?php for ($i = 1; $i <= count($layoutConfig['labels']); $i++): ?>
-                                            <?php if ($i === ((int)$layoutConfig['aisle_after'] + 1)): ?>
-                                                <div class="seat-aisle-gap"></div>
-                                            <?php endif; ?>
+                                <div class="seat-board-theme">
+                                    <?php foreach ($rows as $rowNo => $rowSeats): ?>
+                                        <div class="seat-row-theme">
+                                            <div class="seat-row-label">Row <?php echo e($rowNo); ?></div>
 
-                                            <?php if (isset($rowSeats[$i])): ?>
-                                                <?php $seat = $rowSeats[$i]; ?>
-                                                <?php if (!empty($seat['is_booked'])): ?>
-                                                    <div class="seat-box-theme seat-booked-theme"><?php echo e($seat['seat_number']); ?></div>
-                                                <?php else: ?>
-                                                    <div class="seat-select-wrap">
-                                                        <input
-                                                            type="checkbox"
-                                                            class="seat-checkbox"
-                                                            id="seat_<?php echo e($seat['id']); ?>"
-                                                            name="selected_seats[]"
-                                                            value="<?php echo e($seat['id']); ?>"
-                                                            data-seat-id="<?php echo e($seat['id']); ?>"
-                                                            data-seat-number="<?php echo e($seat['seat_number']); ?>"
-                                                            data-seat-type="<?php echo e($seat['seat_type']); ?>"
-                                                            <?php echo in_array((int)$seat['id'], $oldSelectedSeatIds, true) ? 'checked' : ''; ?>
-                                                            <?php echo !$isCustomerLoggedIn ? 'disabled' : ''; ?>
-                                                        >
-                                                        <label
-                                                            for="seat_<?php echo e($seat['id']); ?>"
-                                                            class="seat-box-theme <?php echo $seat['seat_type'] === 'vip' ? 'seat-vip-theme' : 'seat-normal-theme'; ?>"
-                                                        >
-                                                            <?php echo e($seat['seat_number']); ?>
-                                                        </label>
-                                                    </div>
+                                            <?php for ($i = 1; $i <= count($layoutConfig['labels']); $i++): ?>
+                                                <?php if ($i === ((int)$layoutConfig['aisle_after'] + 1)): ?>
+                                                    <div class="seat-aisle-gap" aria-label="Aisle"></div>
                                                 <?php endif; ?>
-                                            <?php else: ?>
-                                                <div class="seat-box-theme seat-empty-theme">—</div>
-                                            <?php endif; ?>
-                                        <?php endfor; ?>
-                                    </div>
-                                <?php endforeach; ?>
+
+                                                <?php if (isset($rowSeats[$i])): ?>
+                                                    <?php $seat = $rowSeats[$i]; ?>
+                                                    <?php if (!empty($seat['is_booked'])): ?>
+                                                        <div class="seat-box-theme seat-booked-theme" title="Seat <?php echo e($seat['seat_number']); ?> is booked"><?php echo e($seat['seat_number']); ?></div>
+                                                    <?php else: ?>
+                                                        <div class="seat-select-wrap">
+                                                            <input
+                                                                type="checkbox"
+                                                                class="seat-checkbox"
+                                                                id="seat_<?php echo e($seat['id']); ?>"
+                                                                name="selected_seats[]"
+                                                                value="<?php echo e($seat['id']); ?>"
+                                                                data-seat-id="<?php echo e($seat['id']); ?>"
+                                                                data-seat-number="<?php echo e($seat['seat_number']); ?>"
+                                                                data-seat-type="<?php echo e($seat['seat_type']); ?>"
+                                                                <?php echo in_array((int)$seat['id'], $oldSelectedSeatIds, true) ? 'checked' : ''; ?>
+                                                                <?php echo !$isCustomerLoggedIn ? 'disabled' : ''; ?>
+                                                            >
+                                                            <label
+                                                                for="seat_<?php echo e($seat['id']); ?>"
+                                                                class="seat-box-theme <?php echo $seat['seat_type'] === 'vip' ? 'seat-vip-theme' : 'seat-normal-theme'; ?>"
+                                                                title="Select seat <?php echo e($seat['seat_number']); ?>"
+                                                            >
+                                                                <?php echo e($seat['seat_number']); ?>
+                                                            </label>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <div class="seat-box-theme seat-empty-theme">—</div>
+                                                <?php endif; ?>
+                                            <?php endfor; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <div class="bus-exit-zone">
+                                    <span><i class="bi bi-door-open me-1"></i> Passenger entrance</span>
+                                    <span><?php echo e(ucwords(str_replace('_', ' ', (string)$trip['layout_type']))); ?> layout</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-lg-6">
+                    <div class="col-lg-5">
                         <div class="panel-card h-100">
                             <div class="panel-card-header">
-                                <h4>Passenger Details</h4>
-                                <p>Fill one contact passenger only. The system will create ticket records for all selected seats.</p>
+                                <h4><i class="bi bi-person-vcard me-2"></i>Passenger Details</h4>
+                                <p>Enter the main contact information and review the selected-seat total.</p>
                             </div>
 
                             <div class="booking-totals-box mb-3">
@@ -545,7 +893,8 @@ require_once __DIR__ . '/includes/header.php';
             </script>
         <?php endif; ?>
     <?php endif; ?>
-</div>
+    </div>
+</main>
 
 <?php
 if (!empty($checkoutOldInput)) {

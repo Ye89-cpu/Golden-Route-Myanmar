@@ -96,6 +96,19 @@ $paymentMethods = [
     'bank_transfer' => 'Bank Transfer',
 ];
 
+$mobilePaymentMethods = [
+    'wave_money' => [
+        'label' => 'Wave Money',
+        'short' => 'Wave',
+        'description' => 'Pay with your Wave Money mobile wallet.',
+    ],
+    'kbzpay' => [
+        'label' => 'KBZ Pay',
+        'short' => 'KBZ',
+        'description' => 'Pay with your KBZPay mobile wallet.',
+    ],
+];
+
 $paymentQrImage = 'assets/images/QR1.png';
 $paymentQrImageFs = __DIR__ . '/' . $paymentQrImage;
 $paymentQrImageUrl = file_exists($paymentQrImageFs)
@@ -103,10 +116,8 @@ $paymentQrImageUrl = file_exists($paymentQrImageFs)
     : '';
 
 $paymentMethodNotes = [
-    'wave_money' => 'Scan this QR with Wave Money and upload the transfer screenshot.',
-    'kbzpay' => 'Scan this QR with KBZ Pay and upload the transfer screenshot.',
-    'bank_transfer' => 'Transfer to the account shown in the QR / account details and upload the proof.',
-    'cash' => 'For cash payment, enter the office receipt/reference number and upload a clear receipt or confirmation photo.',
+    'wave_money' => 'Open Wave Money, scan the QR code, complete the payment, and upload the successful transaction screenshot.',
+    'kbzpay' => 'Open KBZPay, scan the QR code, complete the payment, and upload the successful transaction screenshot.',
 ];
 
 function payment_badge_class(string $status): string
@@ -138,12 +149,266 @@ if ($booking) {
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<div class="container py-5">
-    <div class="checkout-header mb-4">
-        <div>
-            <span class="section-kicker">Payment</span>
-            <h1 class="page-title mb-2">Submit payment proof</h1>
-            <p class="page-subtitle mb-0">Upload screenshot and transaction details for admin verification.</p>
+<style>
+.mobile-payment-page {
+    background:
+        radial-gradient(circle at 9% 3%, rgba(200,149,57,.13), transparent 24%),
+        linear-gradient(180deg, #f8f5ef 0%, #f5f7fb 100%);
+    min-height: 75vh;
+}
+
+.mobile-payment-page .payment-page-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 30px 32px;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 88% 10%, rgba(246,201,105,.22), transparent 25%),
+        linear-gradient(135deg, #14233e, #24446f);
+    color: #fff;
+    box-shadow: 0 24px 55px rgba(20,35,62,.20);
+}
+
+.mobile-payment-page .payment-page-hero h1 {
+    color: #fff;
+    font-weight: 850;
+    letter-spacing: -.03em;
+}
+
+.mobile-payment-page .payment-page-hero p {
+    color: rgba(255,255,255,.75);
+}
+
+.mobile-payment-page .payment-page-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #f2ca77;
+    font-size: .78rem;
+    font-weight: 850;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+.mobile-payment-page .panel-card {
+    border: 1px solid rgba(20,35,62,.08);
+    border-radius: 28px;
+    background: rgba(255,255,255,.94);
+    box-shadow: 0 20px 48px rgba(20,35,62,.08);
+}
+
+.mobile-payment-page .panel-card-header {
+    display: block;
+}
+
+.mobile-payment-page .panel-card-header h4 {
+    margin-bottom: 5px;
+    color: #17243d;
+    font-weight: 850;
+}
+
+.mobile-payment-page .panel-card-header p {
+    margin: 0;
+    color: #667085;
+}
+
+.mobile-payment-page .payment-summary-code {
+    padding: 18px;
+    border-radius: 19px;
+    background: linear-gradient(135deg, rgba(20,35,62,.06), rgba(200,149,57,.09));
+    border: 1px solid rgba(20,35,62,.07);
+}
+
+.mobile-payment-page .summary-row {
+    gap: 16px;
+}
+
+.mobile-payment-page .summary-row strong {
+    text-align: right;
+}
+
+.mobile-payment-page .mobile-wallet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.mobile-payment-page .mobile-wallet-option {
+    position: relative;
+}
+
+.mobile-payment-page .mobile-wallet-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.mobile-payment-page .mobile-wallet-card {
+    min-height: 126px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 18px;
+    border: 2px solid rgba(20,35,62,.09);
+    border-radius: 21px;
+    background: #fff;
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.mobile-payment-page .mobile-wallet-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(200,149,57,.45);
+    box-shadow: 0 12px 28px rgba(20,35,62,.09);
+}
+
+.mobile-payment-page .mobile-wallet-logo {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 900;
+    letter-spacing: .03em;
+}
+
+.mobile-payment-page .mobile-wallet-logo.wave {
+    background: linear-gradient(145deg, #e8348a, #8f2470);
+}
+
+.mobile-payment-page .mobile-wallet-logo.kbz {
+    background: linear-gradient(145deg, #2369c7, #13478e);
+}
+
+.mobile-payment-page .mobile-wallet-copy strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #17243d;
+    font-size: 1rem;
+}
+
+.mobile-payment-page .mobile-wallet-copy span {
+    display: block;
+    color: #667085;
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.mobile-payment-page .mobile-wallet-check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(20,35,62,.14);
+    border-radius: 50%;
+    background: #fff;
+    color: transparent;
+    font-size: .72rem;
+}
+
+.mobile-payment-page .mobile-wallet-option input:checked + .mobile-wallet-card {
+    border-color: #1d6b48;
+    background: linear-gradient(145deg, rgba(29,107,72,.08), #fff);
+    box-shadow: 0 14px 30px rgba(29,107,72,.14);
+}
+
+.mobile-payment-page .mobile-wallet-option input:checked + .mobile-wallet-card .mobile-wallet-check {
+    border-color: #1d6b48;
+    background: #1d6b48;
+    color: #fff;
+}
+
+.mobile-payment-page .mobile-wallet-option input:focus-visible + .mobile-wallet-card {
+    outline: 3px solid rgba(37,99,235,.22);
+    outline-offset: 2px;
+}
+
+.mobile-payment-page .payment-qr-modern {
+    overflow: hidden;
+    border: 1px solid rgba(20,35,62,.08);
+    border-radius: 24px;
+    background: linear-gradient(145deg, #f9fbfd, #f6efe3);
+}
+
+.mobile-payment-page .payment-qr-image-wrap {
+    display: inline-flex;
+    padding: 10px;
+    border-radius: 19px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(20,35,62,.10);
+}
+
+.mobile-payment-page .payment-qr-image-wrap img {
+    width: 180px;
+    max-width: 100%;
+    border-radius: 12px;
+}
+
+.mobile-payment-page .payment-step-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.mobile-payment-page .payment-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: #536072;
+    font-size: .86rem;
+}
+
+.mobile-payment-page .payment-step-number {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #17243d;
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+}
+
+.mobile-payment-page .payment-upload-zone {
+    padding: 18px;
+    border: 1px dashed rgba(20,35,62,.22);
+    border-radius: 19px;
+    background: rgba(248,250,252,.82);
+}
+
+.mobile-payment-page #screenshotPreviewImage {
+    max-height: 420px;
+    object-fit: contain;
+    background: #f4f6f8;
+}
+
+@media (max-width: 575.98px) {
+    .mobile-payment-page .payment-page-hero { padding: 25px 21px; }
+    .mobile-payment-page .mobile-wallet-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<main class="mobile-payment-page py-5">
+    <div class="container">
+    <div class="payment-page-hero mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <span class="payment-page-kicker"><i class="bi bi-phone"></i>Mobile Payment</span>
+                <h1 class="mb-2 mt-2">Pay with a Mobile Wallet</h1>
+                <p class="mb-0">Choose Wave Money or KBZPay, scan the QR code, and submit the successful payment screenshot.</p>
+            </div>
+            <a href="<?php echo BASE_URL; ?>customer/bookings.php" class="btn btn-outline-light"><i class="bi bi-arrow-left me-1"></i> Back to Bookings</a>
         </div>
     </div>
 
@@ -167,6 +432,11 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="panel-card-header">
                         <h4>Booking Summary</h4>
                         <p>Check your booking details before payment submission.</p>
+                    </div>
+
+                    <div class="payment-summary-code mb-3">
+                        <small class="text-muted d-block mb-1">Booking Code</small>
+                        <strong class="fs-5"><?php echo e($booking['booking_code']); ?></strong>
                     </div>
 
                     <div class="summary-list">
@@ -228,29 +498,25 @@ require_once __DIR__ . '/includes/header.php';
                     <?php if ($formBlocked): ?>
                         <div class="alert alert-warning mb-0"><?php echo e($blockMessage); ?></div>
                     <?php else: ?>
-                        <div class="payment-qr-box mb-4 p-3 rounded-4 border bg-light">
-                            <div class="row g-3 align-items-center">
-                                <div class="col-md-4 text-center">
+                        <div class="payment-qr-modern mb-4 p-4">
+                            <div class="row g-4 align-items-center">
+                                <div class="col-md-5 text-center">
                                     <?php if ($paymentQrImageUrl !== ''): ?>
-                                        <img
-                                            src="<?php echo e($paymentQrImageUrl); ?>"
-                                            alt="Payment QR Code"
-                                            class="img-fluid rounded-3 border bg-white p-2"
-                                            style="max-width: 180px;"
-                                        >
+                                        <div class="payment-qr-image-wrap">
+                                            <img src="<?php echo e($paymentQrImageUrl); ?>" alt="Mobile payment QR code">
+                                        </div>
                                     <?php else: ?>
                                         <div class="alert alert-warning mb-0">QR image not found.</div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="col-md-8">
-                                    <h5 class="mb-2">Scan QR to Pay</h5>
-                                    <p class="text-muted mb-2" id="paymentQrNote">
-                                        Select a payment method, scan this QR, then upload the payment screenshot.
-                                    </p>
-                                    <div class="small">
-                                        <div><strong>Amount:</strong> <?php echo e(number_format((float)$booking['total_amount'], 2)); ?> MMK</div>
-                                        <div><strong>Booking Code:</strong> <?php echo e($booking['booking_code']); ?></div>
-                                        <div><strong>Reference:</strong> Enter the transaction ID or cash receipt number.</div>
+                                <div class="col-md-7">
+                                    <span class="payment-page-kicker text-dark"><i class="bi bi-qr-code-scan"></i>Scan to pay</span>
+                                    <h5 class="mt-2 mb-2 fw-bold">Complete your mobile payment</h5>
+                                    <p class="text-muted mb-0" id="paymentQrNote">Choose a mobile payment app below to see the payment instruction.</p>
+                                    <div class="payment-step-list">
+                                        <div class="payment-step"><span class="payment-step-number">1</span><span>Select Wave Money or KBZPay.</span></div>
+                                        <div class="payment-step"><span class="payment-step-number">2</span><span>Scan the QR and pay <strong><?php echo e(number_format((float)$booking['total_amount'], 2)); ?> MMK</strong>.</span></div>
+                                        <div class="payment-step"><span class="payment-step-number">3</span><span>Copy the transaction ID and upload the success screenshot.</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -261,33 +527,47 @@ require_once __DIR__ . '/includes/header.php';
                             <input type="hidden" name="csrf_token" value="<?php echo e($paymentCsrfToken); ?>">
 
                             <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="paymentMethod" class="form-label">Payment Method <span class="text-danger">*</span></label>
-                                    <select name="payment_method" id="paymentMethod" class="form-select" required aria-describedby="paymentMethodFeedback">
-                                        <option value="">Select payment method</option>
-                                        <?php foreach ($paymentMethods as $value => $label): ?>
-                                            <option value="<?php echo e($value); ?>" <?php echo $paymentOld('payment_method') === $value ? 'selected' : ''; ?>>
-                                                <?php echo e($label); ?>
-                                            </option>
+                                <div class="col-12">
+                                    <label class="form-label">Select Mobile Payment App <span class="text-danger">*</span></label>
+                                    <div class="mobile-wallet-grid" id="paymentMethodGroup" role="radiogroup" aria-describedby="paymentMethodFeedback">
+                                        <?php foreach ($mobilePaymentMethods as $value => $method): ?>
+                                            <div class="mobile-wallet-option">
+                                                <input
+                                                    type="radio"
+                                                    name="payment_method"
+                                                    id="paymentMethod_<?php echo e($value); ?>"
+                                                    value="<?php echo e($value); ?>"
+                                                    <?php echo $paymentOld('payment_method') === $value ? 'checked' : ''; ?>
+                                                    required
+                                                >
+                                                <label for="paymentMethod_<?php echo e($value); ?>" class="mobile-wallet-card">
+                                                    <span class="mobile-wallet-logo <?php echo $value === 'wave_money' ? 'wave' : 'kbz'; ?>"><?php echo e($method['short']); ?></span>
+                                                    <span class="mobile-wallet-copy">
+                                                        <strong><?php echo e($method['label']); ?></strong>
+                                                        <span><?php echo e($method['description']); ?></span>
+                                                    </span>
+                                                    <span class="mobile-wallet-check"><i class="bi bi-check-lg"></i></span>
+                                                </label>
+                                            </div>
                                         <?php endforeach; ?>
-                                    </select>
-                                    <div id="paymentMethodFeedback" class="invalid-feedback">Please select a valid payment method.</div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label class="form-label">Amount</label>
-                                    <input type="text" class="form-control" value="<?php echo e(number_format((float)$booking['total_amount'], 2)); ?> MMK" readonly>
+                                    </div>
+                                    <div id="paymentMethodFeedback" class="invalid-feedback d-block" style="display:none !important;">Please select Wave Money or KBZPay.</div>
                                 </div>
 
                                 <div class="col-12">
-                                    <label for="transactionRef" class="form-label">Transaction / Receipt Reference <span class="text-danger">*</span></label>
+                                    <label class="form-label">Payment Amount</label>
+                                    <input type="text" class="form-control fw-bold" value="<?php echo e(number_format((float)$booking['total_amount'], 2)); ?> MMK" readonly>
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="transactionRef" class="form-label">Mobile Transaction ID <span class="text-danger">*</span></label>
                                     <input
                                         type="text"
                                         name="transaction_ref"
                                         id="transactionRef"
                                         class="form-control"
                                         value="<?php echo e($paymentOld('transaction_ref')); ?>"
-                                        placeholder="Example: WAVE-123456789 or CASH-RECEIPT-001"
+                                        placeholder="Example: WAVE-123456789 or KBZ-987654321"
                                         minlength="4"
                                         maxlength="100"
                                         pattern="[A-Za-z0-9][A-Za-z0-9 ._/#:()\-]{3,99}"
@@ -296,11 +576,11 @@ require_once __DIR__ . '/includes/header.php';
                                         aria-describedby="transactionRefHelp transactionRefFeedback"
                                     >
                                     <div id="transactionRefHelp" class="form-text">Enter 4–100 characters. Letters, numbers, spaces and . _ / # : ( ) - are allowed.</div>
-                                    <div id="transactionRefFeedback" class="invalid-feedback">Enter a valid transaction or receipt reference.</div>
+                                    <div id="transactionRefFeedback" class="invalid-feedback">Enter a valid mobile transaction ID.</div>
                                 </div>
 
-                                <div class="col-12">
-                                    <label for="paymentScreenshot" class="form-label">Payment Screenshot <span class="text-danger">*</span></label>
+                                <div class="col-12 payment-upload-zone">
+                                    <label for="paymentScreenshot" class="form-label"><i class="bi bi-cloud-arrow-up me-1"></i>Successful Payment Screenshot <span class="text-danger">*</span></label>
                                     <input
                                         type="file"
                                         name="payment_screenshot"
@@ -334,7 +614,7 @@ require_once __DIR__ . '/includes/header.php';
                                         id="paymentNotes"
                                         rows="4"
                                         class="form-control"
-                                        placeholder="Enter payer name, transfer time, account/phone used, or other verification details"
+                                        placeholder="Enter payer name, mobile wallet phone number, transfer time, or other verification details"
                                         minlength="5"
                                         maxlength="1000"
                                         required
@@ -357,12 +637,14 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
     <?php endif; ?>
-</div>
+    </div>
+</main>
 
 <script>
 const paymentMethodNotes = <?php echo json_encode($paymentMethodNotes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const paymentForm = document.getElementById('paymentForm');
-const paymentMethodSelect = document.getElementById('paymentMethod');
+const paymentMethodInputs = Array.from(document.querySelectorAll('input[name="payment_method"]'));
+const paymentMethodFeedback = document.getElementById('paymentMethodFeedback');
 const paymentQrNote = document.getElementById('paymentQrNote');
 const transactionRefInput = document.getElementById('transactionRef');
 const paymentScreenshotInput = document.getElementById('paymentScreenshot');
@@ -375,14 +657,26 @@ const allowedScreenshotTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const allowedScreenshotExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 const maximumScreenshotBytes = 5 * 1024 * 1024;
 
+function getSelectedPaymentMethod() {
+    const selected = paymentMethodInputs.find(input => input.checked);
+    return selected ? selected.value : '';
+}
+
 function updatePaymentQrNote() {
-    if (!paymentMethodSelect || !paymentQrNote) {
+    if (!paymentQrNote) {
         return;
     }
 
-    const selectedMethod = paymentMethodSelect.value;
+    const selectedMethod = getSelectedPaymentMethod();
     paymentQrNote.textContent = paymentMethodNotes[selectedMethod]
-        || 'Select a payment method, scan this QR, then upload the payment screenshot.';
+        || 'Choose Wave Money or KBZPay, scan the QR, and upload the successful payment screenshot.';
+
+    if (paymentMethodFeedback) {
+        const showMethodError = paymentForm
+            && paymentForm.classList.contains('was-validated')
+            && selectedMethod === '';
+        paymentMethodFeedback.style.setProperty('display', showMethodError ? 'block' : 'none', 'important');
+    }
 }
 
 function validateTransactionReference() {
@@ -394,9 +688,9 @@ function validateTransactionReference() {
     transactionRefInput.value = value;
 
     if (value === '') {
-        transactionRefInput.setCustomValidity('Transaction or receipt reference is required.');
+        transactionRefInput.setCustomValidity('Mobile transaction ID is required.');
     } else if (!transactionReferencePattern.test(value)) {
-        transactionRefInput.setCustomValidity('Use 4–100 valid characters for the reference.');
+        transactionRefInput.setCustomValidity('Use 4–100 valid characters for the mobile transaction ID.');
     } else {
         transactionRefInput.setCustomValidity('');
     }
@@ -460,8 +754,8 @@ function validateScreenshot() {
     return paymentScreenshotInput.checkValidity();
 }
 
-if (paymentMethodSelect) {
-    paymentMethodSelect.addEventListener('change', updatePaymentQrNote);
+if (paymentMethodInputs.length) {
+    paymentMethodInputs.forEach(input => input.addEventListener('change', updatePaymentQrNote));
     updatePaymentQrNote();
 }
 
@@ -532,15 +826,17 @@ if (paymentNotesInput) {
 
 if (paymentForm) {
     paymentForm.addEventListener('submit', (event) => {
+        paymentForm.classList.add('was-validated');
+        const paymentMethodValid = getSelectedPaymentMethod() !== '';
+        updatePaymentQrNote();
         const transactionValid = validateTransactionReference();
         const screenshotValid = validateScreenshot();
         const notesValid = validatePaymentNotes();
         const formValid = paymentForm.checkValidity()
+            && paymentMethodValid
             && transactionValid
             && screenshotValid
             && notesValid;
-
-        paymentForm.classList.add('was-validated');
 
         if (!formValid) {
             event.preventDefault();

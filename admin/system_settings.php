@@ -67,6 +67,78 @@ require_once __DIR__ . '/../includes/header.php';
                             </div>
                         </div>
 
+                        <hr class="my-4" id="partner-settings">
+
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                            <div>
+                                <h5 class="fw-bold mb-1">Partner Program Settings</h5>
+                                <p class="text-muted small mb-0">Public commission, settlement, report, and support information shown in the partner portal.</p>
+                            </div>
+                            <a href="<?php echo BASE_URL; ?>partners.php" target="_blank" class="btn btn-sm btn-outline-primary align-self-md-start">Preview Portal</a>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Bus Commission (%)</label>
+                                <input type="number" min="0" max="100" step="0.01" name="partner_bus_commission_percent" class="form-control" value="<?php echo e($settings['partner_bus_commission_percent'] ?? '7'); ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tour Commission (%)</label>
+                                <input type="number" min="0" max="100" step="0.01" name="partner_tour_commission_percent" class="form-control" value="<?php echo e($settings['partner_tour_commission_percent'] ?? '10'); ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Bus + Tour Commission (%)</label>
+                                <input type="number" min="0" max="100" step="0.01" name="partner_both_commission_percent" class="form-control" value="<?php echo e($settings['partner_both_commission_percent'] ?? '8'); ?>">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label">Minimum Settlement Amount</label>
+                                <input type="number" min="0" step="1000" name="partner_min_settlement_amount" class="form-control" value="<?php echo e($settings['partner_min_settlement_amount'] ?? '100000'); ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Settlement Cycle</label>
+                                <input type="text" name="partner_settlement_cycle" class="form-control" value="<?php echo e($settings['partner_settlement_cycle'] ?? 'Twice monthly'); ?>">
+                            </div>
+                        </div>
+
+                        <div class="mb-3 mt-3">
+                            <label class="form-label">Settlement Method</label>
+                            <input type="text" name="partner_settlement_method" class="form-control" value="<?php echo e($settings['partner_settlement_method'] ?? 'Bank transfer to the verified company account'); ?>">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">First Settlement Window</label>
+                            <input type="text" name="partner_settlement_period_one" class="form-control" value="<?php echo e($settings['partner_settlement_period_one'] ?? 'Paid bookings from the 1st–15th are settled by the 20th.'); ?>">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Second Settlement Window</label>
+                            <input type="text" name="partner_settlement_period_two" class="form-control" value="<?php echo e($settings['partner_settlement_period_two'] ?? 'Paid bookings from the 16th–month end are settled by the 5th of the next month.'); ?>">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Report Delivery</label>
+                            <input type="text" name="partner_report_delivery" class="form-control" value="<?php echo e($settings['partner_report_delivery'] ?? 'Dashboard summary plus downloadable PDF report'); ?>">
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Partner Support Email</label>
+                                <input type="email" name="partner_support_email" class="form-control" value="<?php echo e($settings['partner_support_email'] ?? ($settings['support_email'] ?? '')); ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Partner Support Phone</label>
+                                <input type="text" name="partner_support_phone" class="form-control" value="<?php echo e($settings['partner_support_phone'] ?? ($settings['support_phone'] ?? '')); ?>">
+                            </div>
+                        </div>
+
+                        <div class="mb-3 mt-3">
+                            <label class="form-label">Commercial Note</label>
+                            <textarea name="partner_commercial_note" rows="3" class="form-control"><?php echo e($settings['partner_commercial_note'] ?? 'Final rates are confirmed in the signed partner agreement. Refunds, chargebacks, and approved adjustments are deducted before settlement.'); ?></textarea>
+                        </div>
+
                         <hr class="my-4">
 
                         <div class="form-check mb-3">

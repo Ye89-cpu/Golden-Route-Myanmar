@@ -145,6 +145,61 @@ function fetch_featured_bus_companies(mysqli $conn, int $limit = 9): array
     $result = $stmt->get_result();
 
     while ($row = $result->fetch_assoc()) {
+        $routeSql = "
+            SELECT
+                r.id AS route_id,
+                r.from_city_id,
+                r.to_city_id,
+                fc.name AS from_city_name,
+                tc.name AS to_city_name,
+                MIN(CASE
+                    WHEN t.status = 'open' AND t.trip_date >= CURDATE() THEN t.trip_date
+                    ELSE NULL
+                END) AS next_trip_date
+            FROM routes r
+            INNER JOIN cities fc ON fc.id = r.from_city_id
+            INNER JOIN cities tc ON tc.id = r.to_city_id
+            LEFT JOIN trips t
+                ON t.route_id = r.id
+               AND t.company_id = r.company_id
+            WHERE r.company_id = ?
+              AND r.status = 'active'
+            GROUP BY
+                r.id,
+                r.from_city_id,
+                r.to_city_id,
+                fc.name,
+                tc.name
+            ORDER BY
+                (next_trip_date IS NULL) ASC,
+                next_trip_date ASC,
+                r.id ASC
+            LIMIT 1
+        ";
+
+        $routeStmt = $conn->prepare($routeSql);
+        if ($routeStmt) {
+            $companyId = (int)($row['id'] ?? 0);
+            $routeStmt->bind_param('i', $companyId);
+            $routeStmt->execute();
+            $routeResult = $routeStmt->get_result();
+            $route = $routeResult ? $routeResult->fetch_assoc() : null;
+            $routeStmt->close();
+
+            if ($route) {
+                $row['highlight_route_id'] = (int)($route['route_id'] ?? 0);
+                $row['highlight_from_city_id'] = (int)($route['from_city_id'] ?? 0);
+                $row['highlight_to_city_id'] = (int)($route['to_city_id'] ?? 0);
+                $row['highlight_from_city_name'] = (string)($route['from_city_name'] ?? '');
+                $row['highlight_to_city_name'] = (string)($route['to_city_name'] ?? '');
+                $row['highlight_next_trip_date'] = (string)($route['next_trip_date'] ?? '');
+                $row['highlight_route'] = trim(
+                    $row['highlight_from_city_name'] . ' → ' . $row['highlight_to_city_name'],
+                    ' →'
+                );
+            }
+        }
+
         $companies[] = $row;
     }
 

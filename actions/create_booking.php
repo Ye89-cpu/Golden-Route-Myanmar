@@ -65,6 +65,7 @@ $tripId = (int)($_POST['trip_id'] ?? 0);
 $csrfToken = trim((string)($_POST['csrf_token'] ?? ''));
 $selectedSeatIdsRaw = $_POST['selected_seats'] ?? [];
 $customerNote = trim((string)($_POST['customer_note'] ?? ''));
+$promotionCode = strtoupper(trim((string)($_POST['promotion_code'] ?? '')));
 
 $bulkFullName = create_booking_clean_single_line((string)($_POST['booking_full_name'] ?? ''));
 $bulkPhone = create_booking_normalize_phone((string)($_POST['booking_phone'] ?? ''));
@@ -130,6 +131,12 @@ try {
 
     if (create_booking_text_length($customerNote) > 2000) {
         throw new Exception('Customer note must not exceed 2000 characters.');
+    }
+
+    if ($promotionCode !== '') {
+        if (strlen($promotionCode) > 50 || preg_match('/^[A-Z0-9_-]+$/', $promotionCode) !== 1) {
+            throw new Exception('Promotion code may contain only letters, numbers, hyphens, and underscores.');
+        }
     }
 
     $optionalNames = [];
@@ -292,7 +299,80 @@ try {
     */
     $bookingCode = generate_unique_booking_code($conn);
     $passengerCount = count($selectedSeatIds);
-    $totalAmount = $seatPrice * $passengerCount;
+    $originalAmount = round($seatPrice * $passengerCount, 2);
+    $totalAmount = $originalAmount;
+    $promotionDiscount = 0.00;
+    $appliedPromotion = null;
+
+    if ($promotionCode !== '') {
+        $promotionSql = "
+            SELECT id, title, promo_code, discount_type, discount_value, starts_at, ends_at, status
+            FROM promotions
+            WHERE UPPER(promo_code) = ?
+            LIMIT 1
+            FOR UPDATE
+        ";
+        $promotionStmt = $conn->prepare($promotionSql);
+        if (!$promotionStmt) {
+            throw new Exception('Promotion codes are temporarily unavailable. Please continue without a code or try again.');
+        }
+
+        $promotionStmt->bind_param('s', $promotionCode);
+        $promotionStmt->execute();
+        $promotionResult = $promotionStmt->get_result();
+        $promotion = $promotionResult ? $promotionResult->fetch_assoc() : null;
+        $promotionStmt->close();
+
+        if (!$promotion) {
+            throw new Exception('Promotion code was not found. Please check the code and try again.');
+        }
+
+        $now = time();
+        $startsAt = !empty($promotion['starts_at']) ? strtotime((string)$promotion['starts_at']) : false;
+        $endsAt = !empty($promotion['ends_at']) ? strtotime((string)$promotion['ends_at']) : false;
+
+        if ((string)$promotion['status'] !== 'active') {
+            throw new Exception('This promotion code is not active.');
+        }
+        if ($startsAt !== false && $startsAt > $now) {
+            throw new Exception('This promotion has not started yet.');
+        }
+        if ($endsAt !== false && $endsAt < $now) {
+            throw new Exception('This promotion code has expired.');
+        }
+
+        $discountValue = (float)$promotion['discount_value'];
+        if ((string)$promotion['discount_type'] === 'percentage') {
+            if ($discountValue <= 0 || $discountValue > 100) {
+                throw new Exception('This promotion has an invalid percentage value.');
+            }
+            $promotionDiscount = round($originalAmount * ($discountValue / 100), 2);
+        } elseif ((string)$promotion['discount_type'] === 'fixed') {
+            if ($discountValue <= 0) {
+                throw new Exception('This promotion has an invalid discount value.');
+            }
+            $promotionDiscount = round($discountValue, 2);
+        } else {
+            throw new Exception('This promotion has an invalid discount type.');
+        }
+
+        $promotionDiscount = min($originalAmount, $promotionDiscount);
+        $totalAmount = max(0, round($originalAmount - $promotionDiscount, 2));
+        $appliedPromotion = $promotion;
+    }
+
+    $bookingNotes = $customerNote;
+    if ($appliedPromotion) {
+        $promotionNote = sprintf(
+            'Promotion %s applied: -%s MMK (original %s MMK)',
+            (string)$appliedPromotion['promo_code'],
+            number_format($promotionDiscount, 2, '.', ''),
+            number_format($originalAmount, 2, '.', '')
+        );
+        $bookingNotes = trim($bookingNotes);
+        $bookingNotes = $bookingNotes !== '' ? $bookingNotes . PHP_EOL . $promotionNote : $promotionNote;
+    }
+
     $bookingType = 'bus';
     $bookingStatus = 'pending';
     $paymentStatus = 'unpaid';
@@ -328,7 +408,7 @@ try {
         $totalAmount,
         $bookingStatus,
         $paymentStatus,
-        $customerNote
+        $bookingNotes
     );
 
     if (!$bookingStmt->execute()) {
@@ -458,6 +538,10 @@ try {
     $auditAction = 'booking_created';
     $entityType = 'booking';
     $description = 'Created bus booking: ' . $bookingCode;
+    if ($appliedPromotion) {
+        $description .= ' | Promotion: ' . (string)$appliedPromotion['promo_code']
+            . ' | Discount: ' . number_format($promotionDiscount, 2, '.', '') . ' MMK';
+    }
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
 
     $auditSql = "
@@ -504,7 +588,12 @@ try {
     unset($_SESSION['booking_csrf_token']);
     clear_old_input();
 
-    $successMessage = 'Booking created successfully. Booking Code: ' . $bookingCode . '. Please submit your payment proof.';
+    $successMessage = 'Booking created successfully. Booking Code: ' . $bookingCode . '.';
+    if ($appliedPromotion) {
+        $successMessage .= ' Promotion ' . (string)$appliedPromotion['promo_code']
+            . ' saved you ' . number_format($promotionDiscount, 2) . ' MMK.';
+    }
+    $successMessage .= ' Please submit your payment proof.';
     if ($passengerCount >= 3) {
         $successMessage .= ' Reminder: Please bring NRC / ID card for all passengers.';
     }
@@ -532,6 +621,7 @@ try {
         'booking_age' => $bulkAge,
         'booking_special_note' => $bulkSpecialNote,
         'passenger_names_text' => $passengerNamesText,
+        'promotion_code' => $promotionCode,
         'customer_note' => $customerNote,
     ]);
 

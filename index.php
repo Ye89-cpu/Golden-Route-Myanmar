@@ -18,20 +18,6 @@ $stats = [
 $sliderEvents = [];
 $featuredBusCompanies = [];
 
-/*
-    FIX FOR COMPANY LOGO DISPLAY
-
-    Problem:
-    Some company logo paths in database are like:
-    assets/company_logos/company-name.svg
-
-    But generated logo files are inside:
-    uploads/company_logos/company-name-id.svg
-
-    This helper first checks database logo path.
-    If file does not exist, it tries the generated upload logo path.
-*/
-
 function home_safe_logo_file_name(string $name): string
 {
     $name = strtolower(trim($name));
@@ -47,7 +33,6 @@ function home_company_logo_url(array $company): string
     $companyName = (string)($company['name'] ?? 'company');
     $dbLogoPath = trim((string)($company['logo'] ?? ''));
 
-    // 1. Try database logo path first.
     if ($dbLogoPath !== '') {
         $cleanPath = ltrim($dbLogoPath, '/');
         $fullPath = __DIR__ . '/' . $cleanPath;
@@ -57,7 +42,6 @@ function home_company_logo_url(array $company): string
         }
     }
 
-    // 2. Try generated upload logo path.
     if ($companyId > 0) {
         $generatedFile = home_safe_logo_file_name($companyName) . '-' . $companyId . '.svg';
         $generatedPath = 'uploads/company_logos/' . $generatedFile;
@@ -68,7 +52,6 @@ function home_company_logo_url(array $company): string
         }
     }
 
-    // 3. No valid logo found.
     return '';
 }
 
@@ -86,14 +69,14 @@ try {
             $stmt->execute();
             $result = $stmt->get_result();
             $row = $result ? $result->fetch_assoc() : null;
-            $stats[$key] = (int) ($row['total'] ?? 0);
+            $stats[$key] = (int)($row['total'] ?? 0);
             $stmt->close();
         }
     }
 
     ensure_events_table_exists($conn);
     $sliderEvents = get_slider_events($conn, 5);
-    $featuredBusCompanies = fetch_featured_bus_companies($conn, 9);
+    $featuredBusCompanies = fetch_featured_bus_companies($conn, 6);
 } catch (Throwable $e) {
     $sliderEvents = [];
     $featuredBusCompanies = [];
@@ -101,514 +84,470 @@ try {
 
 $conn->close();
 
+$minimumTravelDate = date('Y-m-d');
+$popularCities = [
+    'Yangon', 'Mandalay', 'Nay Pyi Taw', 'Bagan', 'Taunggyi', 'Inle',
+    'Kalaw', 'Bago', 'Mawlamyine', 'Hpa-An', 'Pyin Oo Lwin', 'Pathein',
+    'Monywa', 'Magway', 'Meiktila', 'Dawei', 'Myeik', 'Myitkyina'
+];
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<section class="hero-section">
-    <div class="container">
-        <div class="hero-card">
-            <div class="row g-4 align-items-center">
+<main class="home-v2">
+    <section class="home-hero-v2">
+        <div class="home-hero-orb home-hero-orb-one"></div>
+        <div class="home-hero-orb home-hero-orb-two"></div>
+
+        <div class="container position-relative">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6">
+                    <div class="home-hero-copy">
+                        <div class="home-eyebrow">
+                            <span class="home-eyebrow-dot"></span>
+                            Travel across Myanmar with confidence
+                        </div>
+
+                        <h1>One simple place for your <span>next journey.</span></h1>
+                        <p>
+                            Find trusted bus routes, choose your seat, explore curated tours,
+                            and keep every booking organized from departure to destination.
+                        </p>
+
+                        <div class="home-hero-actions">
+                            <a href="#quick-booking" class="btn home-primary-btn">
+                                Start booking <i class="bi bi-arrow-right"></i>
+                            </a>
+                            <a href="<?php echo BASE_URL; ?>tours.php" class="btn home-ghost-btn">
+                                <i class="bi bi-compass"></i> Explore tours
+                            </a>
+                        </div>
+
+                        <div class="home-trust-row">
+                            <div class="home-avatar-stack" aria-hidden="true">
+                                <span>Y</span><span>M</span><span>B</span>
+                            </div>
+                            <div>
+                                <strong>Easy, secure and reliable</strong>
+                                <small>Bus tickets, tours and travel support</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="home-visual-card">
+                        <img src="<?php echo BASE_URL; ?>assets/images/bus.png" alt="Bus travel across Myanmar">
+                        <div class="home-visual-shade"></div>
+
+                        <div class="home-route-float">
+                            <span class="home-float-icon"><i class="bi bi-geo-alt-fill"></i></span>
+                            <div>
+                                <small>Popular journey</small>
+                                <strong>Yangon <i class="bi bi-arrow-right"></i> Mandalay</strong>
+                            </div>
+                        </div>
+
+                        <div class="home-rating-float">
+                            <span><i class="bi bi-shield-check"></i></span>
+                            <div>
+                                <strong>Trusted partners</strong>
+                                <small>Verified travel companies</small>
+                            </div>
+                        </div>
+
+                        <div class="home-visual-caption">
+                            <span>Golden Route Myanmar</span>
+                            <strong>Comfortable travel begins here.</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="quick-booking" class="home-search-panel" action="<?php echo BASE_URL; ?>search_bus.php" method="get">
+                <input type="hidden" name="search" value="1">
+
+                <div class="home-search-heading">
+                    <span class="home-search-icon"><i class="bi bi-bus-front"></i></span>
+                    <div>
+                        <strong>Find your bus</strong>
+                        <small>Search available trips in seconds</small>
+                    </div>
+                </div>
+
+                <div class="home-search-fields">
+                    <label class="home-search-field">
+                        <span>From</span>
+                        <div class="home-field-control">
+                            <i class="bi bi-geo-alt"></i>
+                            <input type="text" name="from" list="home-city-list" placeholder="Departure city" required autocomplete="off">
+                        </div>
+                    </label>
+
+                    <button type="button" class="home-swap-btn" data-home-swap aria-label="Swap departure and arrival cities">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </button>
+
+                    <label class="home-search-field">
+                        <span>To</span>
+                        <div class="home-field-control">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <input type="text" name="to" list="home-city-list" placeholder="Arrival city" required autocomplete="off">
+                        </div>
+                    </label>
+
+                    <label class="home-search-field">
+                        <span>Travel date</span>
+                        <div class="home-field-control">
+                            <i class="bi bi-calendar3"></i>
+                            <input type="date" name="travel_date" min="<?php echo e($minimumTravelDate); ?>" required>
+                        </div>
+                    </label>
+
+                    <label class="home-search-field home-service-field">
+                        <span>Bus type</span>
+                        <div class="home-field-control">
+                            <i class="bi bi-stars"></i>
+                            <select name="service_type">
+                                <option value="all">All services</option>
+                                <option value="vip">VIP / Sleeper</option>
+                                <option value="normal">Normal / Mini Bus</option>
+                            </select>
+                        </div>
+                    </label>
+
+                    <button type="submit" class="btn home-search-btn">
+                        <i class="bi bi-search"></i>
+                        <span>Search trips</span>
+                    </button>
+                </div>
+
+                <datalist id="home-city-list">
+                    <?php foreach ($popularCities as $city): ?>
+                        <option value="<?php echo e($city); ?>"></option>
+                    <?php endforeach; ?>
+                </datalist>
+            </form>
+        </div>
+    </section>
+
+    <section class="home-stat-section">
+        <div class="container">
+            <div class="home-stat-bar">
+                <div class="home-stat-item">
+                    <span><i class="bi bi-bus-front"></i></span>
+                    <div><strong><?php echo number_format($stats['open_trips']); ?></strong><small>Open trips</small></div>
+                </div>
+                <div class="home-stat-item">
+                    <span><i class="bi bi-map"></i></span>
+                    <div><strong><?php echo number_format($stats['active_tours']); ?></strong><small>Active tours</small></div>
+                </div>
+                <div class="home-stat-item">
+                    <span><i class="bi bi-patch-check"></i></span>
+                    <div><strong><?php echo number_format($stats['approved_companies']); ?></strong><small>Trusted partners</small></div>
+                </div>
+                <div class="home-stat-item">
+                    <span><i class="bi bi-ticket-perforated"></i></span>
+                    <div><strong><?php echo number_format($stats['tickets_issued']); ?></strong><small>Tickets issued</small></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-section home-destination-section">
+        <div class="container">
+            <div class="home-section-head home-section-head-split">
+                <div>
+                    <span class="home-section-label">Popular experiences</span>
+                    <h2>Choose how you want to travel</h2>
+                    <p>Book a comfortable bus journey or discover Myanmar through curated tour packages.</p>
+                </div>
+                <a href="<?php echo BASE_URL; ?>tours.php" class="home-text-link">See all tours <i class="bi bi-arrow-up-right"></i></a>
+            </div>
+
+            <div class="row g-4">
                 <div class="col-lg-7">
-                    <span class="section-kicker">Fast • Secure • Organized</span>
-                    <h1 class="hero-title">Book bus tickets and tour packages across Myanmar</h1>
-                    <p class="hero-text">
-                        Search routes, choose seats, submit payment proof, receive QR tickets,
-                        and manage bookings in one clean platform designed for customers and admins.
-                    </p>
-
-                    <div class="d-flex flex-wrap gap-3 mt-4">
-                        <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn btn-brand btn-lg">Find Bus Now</a>
-                        <a href="<?php echo BASE_URL; ?>tours.php" class="btn btn-nav-soft btn-lg">Explore Tour Packages</a>
-                    </div>
-
-                    <div class="home-highlight-grid mt-4">
-                        <div class="feature-chip">QR ticket validation</div>
-                        <div class="feature-chip">PDF voucher download</div>
-                        <div class="feature-chip">Payment review workflow</div>
-                        <div class="feature-chip">Role-based admin access</div>
-                    </div>
+                    <a href="<?php echo BASE_URL; ?>search_bus.php" class="home-experience-card home-experience-large">
+                        <img src="<?php echo BASE_URL; ?>assets/images/bus.png" alt="Myanmar bus ticket booking">
+                        <span class="home-experience-overlay"></span>
+                        <span class="home-experience-top"><i class="bi bi-bus-front"></i> Bus tickets</span>
+                        <span class="home-experience-content">
+                            <small>Travel between cities</small>
+                            <strong>Find the right route, schedule and seat.</strong>
+                            <span>Search buses <i class="bi bi-arrow-right"></i></span>
+                        </span>
+                    </a>
                 </div>
 
                 <div class="col-lg-5">
-                    <div class="hero-side-panel">
-                        <div class="route-showcase">
-                            <div class="route-stop">
-                                <small>Popular route</small>
-                                <strong>Yangon</strong>
-                            </div>
-                            <div class="route-divider">→</div>
-                            <div class="route-stop text-end">
-                                <small>Destination</small>
-                                <strong>Mandalay</strong>
-                            </div>
+                    <div class="row g-4 h-100">
+                        <div class="col-12">
+                            <a href="<?php echo BASE_URL; ?>tours.php" class="home-experience-card home-experience-small">
+                                <img src="<?php echo BASE_URL; ?>assets/images/tour.png" alt="Myanmar tour packages">
+                                <span class="home-experience-overlay"></span>
+                                <span class="home-experience-top"><i class="bi bi-compass"></i> Tour packages</span>
+                                <span class="home-experience-content">
+                                    <small>Discover Myanmar</small>
+                                    <strong>Memorable places and local experiences.</strong>
+                                    <span>Explore tours <i class="bi bi-arrow-right"></i></span>
+                                </span>
+                            </a>
                         </div>
-
-                        <div class="route-meta-grid mt-4">
-                            <div class="route-meta-card">
-                                <span>Trips Open</span>
-                                <strong><?php echo number_format($stats['open_trips']); ?></strong>
+                        <div class="col-12">
+                            <div class="home-support-card">
+                                <div class="home-support-icon"><i class="bi bi-headset"></i></div>
+                                <div>
+                                    <small>Need travel support?</small>
+                                    <strong>Your bookings stay organized in one account.</strong>
+                                </div>
+                                <?php if (is_logged_in()): ?>
+                                    <a href="<?php echo BASE_URL; ?>customer/bookings.php" aria-label="Open my bookings"><i class="bi bi-arrow-right"></i></a>
+                                <?php else: ?>
+                                    <a href="<?php echo BASE_URL; ?>register.php" aria-label="Create an account"><i class="bi bi-arrow-right"></i></a>
+                                <?php endif; ?>
                             </div>
-                            <div class="route-meta-card">
-                                <span>Tour Packages</span>
-                                <strong><?php echo number_format($stats['active_tours']); ?></strong>
-                            </div>
-                            <div class="route-meta-card">
-                                <span>Approved Companies</span>
-                                <strong><?php echo number_format($stats['approved_companies']); ?></strong>
-                            </div>
-                            <div class="route-meta-card">
-                                <span>Tickets Issued</span>
-                                <strong><?php echo number_format($stats['tickets_issued']); ?></strong>
-                            </div>
-                        </div>
-
-                        <div class="hero-note mt-4">
-                            Designed for customers, bus companies, tour operators and super admin control.
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<section class="promo-section py-5">
-    <div class="container">
-        <div class="section-heading text-center mb-4">
-            <span class="section-kicker">Events & Promotions</span>
-            <h2 class="page-title mb-2">Latest offers, seasonal trips and travel events</h2>
-            <p class="page-subtitle mx-auto">
-                Use this slider to advertise promotions, public holidays, special bus discounts and tour campaigns.
-            </p>
-        </div>
+    <section class="home-section home-promo-v2-section">
+        <div class="container">
+            <div class="home-section-head text-center">
+                <span class="home-section-label">Offers & events</span>
+                <h2>More reasons to start your journey</h2>
+                <p>Discover seasonal promotions, special routes and travel experiences.</p>
+            </div>
 
-        <div class="promo-shell">
-            <?php if (!empty($sliderEvents)): ?>
-                <div id="homePromoCarousel" class="carousel slide promo-carousel" data-bs-ride="carousel">
-                    <div class="carousel-indicators">
-                        <?php foreach ($sliderEvents as $index => $event): ?>
-                            <button
-                                type="button"
-                                data-bs-target="#homePromoCarousel"
-                                data-bs-slide-to="<?php echo $index; ?>"
-                                class="<?php echo $index === 0 ? 'active' : ''; ?>"
-                                <?php echo $index === 0 ? 'aria-current="true"' : ''; ?>
-                                aria-label="Slide <?php echo $index + 1; ?>">
-                            </button>
-                        <?php endforeach; ?>
-                    </div>
-
+            <div class="home-promo-shell">
+                <div id="homePromoCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5500">
                     <div class="carousel-inner">
-                        <?php foreach ($sliderEvents as $index => $event): ?>
-                            <?php
-                                $eventImage = event_public_image($event['image_path'] ?? null, $event['event_type'] ?? null);
-                                $eventTitle = htmlspecialchars($event['title'] ?? 'Travel Event');
-                                $eventType = htmlspecialchars($event['event_type'] ?? 'Travel Event');
-                                $eventDescription = htmlspecialchars($event['description'] ?? 'Discover new travel opportunities, seasonal promotions and limited-time offers.');
-                                $eventDate = !empty($event['event_date']) ? htmlspecialchars($event['event_date']) : '';
-                                $eventLocation = !empty($event['location']) ? htmlspecialchars($event['location']) : '';
-                            ?>
-                            <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                                <img src="<?php echo $eventImage; ?>" alt="<?php echo $eventTitle; ?>">
-                                <div class="promo-caption">
-                                    <div class="promo-content">
-                                        <span class="promo-tag"><?php echo $eventType; ?></span>
-                                        <h2><?php echo $eventTitle; ?></h2>
-                                        <p><?php echo $eventDescription; ?></p>
-
-                                        <?php if ($eventDate || $eventLocation): ?>
-                                            <div class="d-flex flex-wrap gap-3 mb-3 text-white small fw-semibold">
-                                                <?php if ($eventDate): ?>
-                                                    <span><i class="bi bi-calendar-event"></i> <?php echo $eventDate; ?></span>
-                                                <?php endif; ?>
-
-                                                <?php if ($eventLocation): ?>
-                                                    <span><i class="bi bi-geo-alt"></i> <?php echo $eventLocation; ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
-
-                                        <a href="<?php echo BASE_URL; ?>events.php#event-<?php echo (int) ($event['id'] ?? 0); ?>" class="btn btn-brand">View Events</a>
+                        <?php if (!empty($sliderEvents)): ?>
+                            <?php foreach ($sliderEvents as $index => $event): ?>
+                                <?php
+                                    $eventImage = event_public_image($event['image_path'] ?? null, $event['event_type'] ?? null);
+                                    $eventTitle = htmlspecialchars($event['title'] ?? 'Travel Event');
+                                    $eventType = htmlspecialchars($event['event_type'] ?? 'Travel Event');
+                                    $eventDescription = htmlspecialchars($event['description'] ?? 'Discover new travel opportunities and limited-time offers.');
+                                    $eventDate = !empty($event['event_date']) ? htmlspecialchars($event['event_date']) : '';
+                                    $eventLocation = !empty($event['location']) ? htmlspecialchars($event['location']) : '';
+                                ?>
+                                <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                    <div class="home-promo-slide">
+                                        <img src="<?php echo $eventImage; ?>" alt="<?php echo $eventTitle; ?>">
+                                        <div class="home-promo-gradient"></div>
+                                        <div class="home-promo-content">
+                                            <span><?php echo $eventType; ?></span>
+                                            <h3><?php echo $eventTitle; ?></h3>
+                                            <p><?php echo $eventDescription; ?></p>
+                                            <?php if ($eventDate || $eventLocation): ?>
+                                                <div class="home-promo-meta">
+                                                    <?php if ($eventDate): ?><small><i class="bi bi-calendar-event"></i> <?php echo $eventDate; ?></small><?php endif; ?>
+                                                    <?php if ($eventLocation): ?><small><i class="bi bi-geo-alt"></i> <?php echo $eventLocation; ?></small><?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <a href="<?php echo BASE_URL; ?>events.php#event-<?php echo (int)($event['id'] ?? 0); ?>" class="btn home-light-btn">View event <i class="bi bi-arrow-right"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="carousel-item active">
+                                <div class="home-promo-slide">
+                                    <img src="<?php echo BASE_URL; ?>assets/images/thin.jpg" alt="Thingyan travel promotion">
+                                    <div class="home-promo-gradient"></div>
+                                    <div class="home-promo-content">
+                                        <span>Seasonal travel</span>
+                                        <h3>Make every holiday journey easier.</h3>
+                                        <p>Search available routes early and keep your travel plans together in one place.</p>
+                                        <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn home-light-btn">Check routes <i class="bi bi-arrow-right"></i></a>
                                     </div>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
+                            <div class="carousel-item">
+                                <div class="home-promo-slide">
+                                    <img src="<?php echo BASE_URL; ?>assets/images/tourh.png" alt="Myanmar tour promotion">
+                                    <div class="home-promo-gradient"></div>
+                                    <div class="home-promo-content">
+                                        <span>Curated tours</span>
+                                        <h3>Discover beautiful places across Myanmar.</h3>
+                                        <p>Browse packages for cultural destinations, nature escapes and memorable local experiences.</p>
+                                        <a href="<?php echo BASE_URL; ?>tours.php" class="btn home-light-btn">Explore tours <i class="bi bi-arrow-right"></i></a>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
-                    <?php if (count($sliderEvents) > 1): ?>
-                        <button class="carousel-control-prev" type="button" data-bs-target="#homePromoCarousel" data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">Previous</span>
+                    <div class="home-promo-controls">
+                        <button type="button" data-bs-target="#homePromoCarousel" data-bs-slide="prev" aria-label="Previous promotion">
+                            <i class="bi bi-arrow-left"></i>
                         </button>
-
-                        <button class="carousel-control-next" type="button" data-bs-target="#homePromoCarousel" data-bs-slide="next">
-                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">Next</span>
+                        <button type="button" data-bs-target="#homePromoCarousel" data-bs-slide="next" aria-label="Next promotion">
+                            <i class="bi bi-arrow-right"></i>
                         </button>
-                    <?php endif; ?>
-                </div>
-            <?php else: ?>
-                <div id="homePromoCarousel" class="carousel slide promo-carousel" data-bs-ride="carousel">
-                    <div class="carousel-indicators">
-                        <button type="button" data-bs-target="#homePromoCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-                        <button type="button" data-bs-target="#homePromoCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
-                        <button type="button" data-bs-target="#homePromoCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
                     </div>
-
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img src="<?php echo BASE_URL; ?>assets/images/thin.jpg" alt="Thingyan promotion">
-                            <div class="promo-caption">
-                                <div class="promo-content">
-                                    <span class="promo-tag">Thingyan Travel Event</span>
-                                    <h2>Special New Year travel promotion</h2>
-                                    <p>
-                                        Feature festival travel routes, holiday demand and limited-time discounts for customers.
-                                    </p>
-                                    <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn btn-brand">Check Routes</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="carousel-item">
-                            <img src="<?php echo BASE_URL; ?>assets/images/tourh.png" alt="Tour package promotion">
-                            <div class="promo-caption">
-                                <div class="promo-content">
-                                    <span class="promo-tag">Top Tour Package</span>
-                                    <h2>Explore Bagan, Inle and beach destinations</h2>
-                                    <p>
-                                        Promote best-selling tour packages with stronger visuals, call-to-action buttons and travel highlights.
-                                    </p>
-                                    <a href="<?php echo BASE_URL; ?>tours.php" class="btn btn-brand">Explore Tours</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="carousel-item">
-                            <img src="<?php echo BASE_URL; ?>assets/images/QR.png" alt="Booking platform promotion">
-                            <div class="promo-caption">
-                                <div class="promo-content">
-                                    <span class="promo-tag">Platform Features</span>
-                                    <h2>Fast booking, QR tickets and easier payment review</h2>
-                                    <p>
-                                        Show the strongest points of the platform in a more modern and premium way.
-                                    </p>
-                                    <a href="<?php echo BASE_URL; ?>register.php" class="btn btn-brand">Create Account</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="carousel-control-prev" type="button" data-bs-target="#homePromoCarousel" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-
-                    <button class="carousel-control-next" type="button" data-bs-target="#homePromoCarousel" data-bs-slide="next">
-                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
                 </div>
-            <?php endif; ?>
-        </div>
-    </div>
-</section>
-
-<section class="py-4">
-    <div class="container">
-        <div class="quick-stat-strip">
-            <div class="quick-stat-box">
-                <strong><?php echo number_format($stats['open_trips']); ?></strong>
-                <span>Open Trips</span>
-            </div>
-
-            <div class="quick-stat-box">
-                <strong><?php echo number_format($stats['active_tours']); ?></strong>
-                <span>Tour Packages</span>
-            </div>
-
-            <div class="quick-stat-box">
-                <strong><?php echo number_format($stats['approved_companies']); ?></strong>
-                <span>Approved Companies</span>
-            </div>
-
-            <div class="quick-stat-box">
-                <strong><?php echo number_format($stats['tickets_issued']); ?></strong>
-                <span>Tickets Issued</span>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<section class="bus-company-showcase-section py-5">
-    <div class="container">
-        <div class="section-heading text-center mb-4">
-            <span class="section-kicker">Trusted Bus Partners</span>
-            <h2 class="page-title mb-2">Choose from companies working with Golden Route Myanmar</h2>
-        </div>
+    <section class="home-section home-partner-section">
+        <div class="container">
+            <div class="home-section-head home-section-head-split">
+                <div>
+                    <span class="home-section-label">Trusted bus partners</span>
+                    <h2>Travel with approved companies</h2>
+                    <p>Compare active routes, available trips and starting prices from verified operators.</p>
+                </div>
+                <a href="<?php echo BASE_URL; ?>search_bus.php" class="home-text-link">Find a bus <i class="bi bi-arrow-up-right"></i></a>
+            </div>
 
-        <?php if (!empty($featuredBusCompanies)): ?>
-            <div class="bus-company-showcase" data-company-slider>
-                <button type="button" class="bus-showcase-nav prev" data-slider-prev aria-label="Previous company">
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-
-                <div class="bus-showcase-stage">
-                    <?php $totalCompanies = count($featuredBusCompanies); ?>
-
-                    <?php foreach ($featuredBusCompanies as $index => $company): ?>
+            <?php if (!empty($featuredBusCompanies)): ?>
+                <div class="home-partner-grid">
+                    <?php foreach ($featuredBusCompanies as $company): ?>
                         <?php
-                            $companyName = (string) ($company['name'] ?? 'Bus Partner');
-                            $companyType = (string) ($company['company_type'] ?? 'bus_company');
+                            $companyName = (string)($company['name'] ?? 'Bus Partner');
+                            $companyType = (string)($company['company_type'] ?? 'bus_company');
                             $companyLogoUrl = home_company_logo_url($company);
                             $companyDescription = company_short_description($company['description'] ?? null);
-                            $companyRoute = trim((string) ($company['highlight_route'] ?? ''));
-                            $companyAddress = trim((string) ($company['address'] ?? 'Myanmar'));
-                            $activeBuses = (int) ($company['active_buses'] ?? 0);
-                            $activeRoutes = (int) ($company['active_routes'] ?? 0);
-                            $openTrips = (int) ($company['open_trips'] ?? 0);
-                            $startingPrice = (float) ($company['starting_price'] ?? 0);
-
-                            $fallbackClass = '';
-
-                            if ($index === 0) {
-                                $fallbackClass = 'is-active';
-                            } elseif ($index === 1) {
-                                $fallbackClass = 'is-next';
-                            } elseif ($index === $totalCompanies - 1) {
-                                $fallbackClass = 'is-prev';
-                            }
-
-                            $routeFrom = '';
-                            $routeTo = '';
-
-                            if ($companyRoute !== '') {
-                                $normalizedRoute = html_entity_decode($companyRoute, ENT_QUOTES, 'UTF-8');
-
-                                if (strpos($normalizedRoute, '→') !== false) {
-                                    $routeParts = array_map('trim', explode('→', $normalizedRoute, 2));
-                                    $routeFrom = $routeParts[0] ?? '';
-                                    $routeTo = $routeParts[1] ?? '';
-                                } elseif (strpos($normalizedRoute, '->') !== false) {
-                                    $routeParts = array_map('trim', explode('->', $normalizedRoute, 2));
-                                    $routeFrom = $routeParts[0] ?? '';
-                                    $routeTo = $routeParts[1] ?? '';
-                                } elseif (strpos($normalizedRoute, '-') !== false) {
-                                    $routeParts = array_map('trim', explode('-', $normalizedRoute, 2));
-                                    $routeFrom = $routeParts[0] ?? '';
-                                    $routeTo = $routeParts[1] ?? '';
-                                }
-                            }
-
-                            $searchParams = [
-                                'company_id' => (int) ($company['id'] ?? 0),
-                            ];
-
-                            if ($routeFrom !== '') {
-                                $searchParams['from'] = $routeFrom;
-                            }
-
-                            if ($routeTo !== '') {
-                                $searchParams['to'] = $routeTo;
-                            }
-
-                            $searchUrl = BASE_URL . 'search_bus.php?' . http_build_query($searchParams);
+                            $companyRoute = trim((string)($company['highlight_route'] ?? ''));
+                            $openTrips = (int)($company['open_trips'] ?? 0);
+                            $activeRoutes = (int)($company['active_routes'] ?? 0);
+                            $startingPrice = (float)($company['starting_price'] ?? 0);
+                            $searchUrl = BASE_URL . 'search_bus.php?' . http_build_query([
+                                'company_id' => (int)($company['id'] ?? 0),
+                            ]);
                         ?>
-
-                        <article class="bus-showcase-card <?php echo $fallbackClass; ?>" data-slide-index="<?php echo $index; ?>">
-                            <div class="bus-showcase-glow"></div>
-
-                            <div class="bus-showcase-media">
-                                <?php if ($companyLogoUrl !== ''): ?>
-                                    <img
-                                        src="<?php echo e($companyLogoUrl); ?>"
-                                        alt="<?php echo e($companyName); ?> logo"
-                                        style="width: 100%; height: 100%; object-fit: cover; display: block;"
-                                    >
-                                <?php else: ?>
-                                    <div class="bus-showcase-placeholder">
-                                        <?php echo e(company_initials($companyName)); ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <span class="bus-showcase-type-badge">
-                                    <?php echo e(company_type_label($companyType)); ?>
-                                </span>
-
-                                <span class="bus-showcase-status-badge">
-                                    <?php echo e(company_status_label($company)); ?>
-                                </span>
+                        <article class="home-partner-card">
+                            <div class="home-partner-top">
+                                <div class="home-partner-logo">
+                                    <?php if ($companyLogoUrl !== ''): ?>
+                                        <img src="<?php echo e($companyLogoUrl); ?>" alt="<?php echo e($companyName); ?> logo">
+                                    <?php else: ?>
+                                        <span><?php echo e(company_initials($companyName)); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="home-verified-badge"><i class="bi bi-patch-check-fill"></i> Approved</span>
                             </div>
 
-                            <div class="bus-showcase-body">
-                                <h3><?php echo e($companyName); ?></h3>
+                            <span class="home-partner-type"><?php echo e(company_type_label($companyType)); ?></span>
+                            <h3><?php echo e($companyName); ?></h3>
+                            <p><?php echo e($companyDescription); ?></p>
 
-                                <p class="bus-showcase-desc">
-                                    <?php echo e($companyDescription); ?>
-                                </p>
-
-                                <div class="bus-showcase-route">
-                                    <i class="bi bi-sign-turn-right-fill"></i>
-                                    <span>
-                                        <?php echo e($companyRoute !== '' ? $companyRoute : 'Multiple active routes available'); ?>
-                                    </span>
-                                </div>
-
-                                <div class="bus-showcase-meta-grid">
-                                    <div class="bus-showcase-stat">
-                                        <strong><?php echo number_format($activeBuses); ?></strong>
-                                        <span>Active Buses</span>
-                                    </div>
-
-                                    <div class="bus-showcase-stat">
-                                        <strong><?php echo number_format($activeRoutes); ?></strong>
-                                        <span>Routes</span>
-                                    </div>
-
-                                    <div class="bus-showcase-stat">
-                                        <strong><?php echo number_format($openTrips); ?></strong>
-                                        <span>Open Trips</span>
-                                    </div>
-
-                                    <div class="bus-showcase-stat">
-                                        <strong>
-                                            <?php echo $startingPrice > 0 ? 'MMK ' . number_format($startingPrice, 0) : 'Contact'; ?>
-                                        </strong>
-                                        <span>Starting From</span>
-                                    </div>
-                                </div>
-
-                                <div class="bus-showcase-footer-row">
-                                    <div class="bus-showcase-location">
-                                        <i class="bi bi-geo-alt-fill"></i>
-                                        <span><?php echo e($companyAddress !== '' ? $companyAddress : 'Myanmar'); ?></span>
-                                    </div>
-
-                                    <a href="<?php echo e($searchUrl); ?>" class="btn btn-brand btn-sm">
-                                        Search Trips
-                                    </a>
-                                </div>
+                            <div class="home-partner-route">
+                                <i class="bi bi-sign-turn-right"></i>
+                                <span><?php echo e($companyRoute !== '' ? $companyRoute : 'Multiple routes available'); ?></span>
                             </div>
+
+                            <div class="home-partner-data">
+                                <div><strong><?php echo number_format($activeRoutes); ?></strong><small>Routes</small></div>
+                                <div><strong><?php echo number_format($openTrips); ?></strong><small>Open trips</small></div>
+                                <div><strong><?php echo $startingPrice > 0 ? number_format($startingPrice / 1000, 0) . 'K' : 'Ask'; ?></strong><small>From MMK</small></div>
+                            </div>
+
+                            <a href="<?php echo e($searchUrl); ?>" class="home-partner-link">View available trips <i class="bi bi-arrow-right"></i></a>
                         </article>
                     <?php endforeach; ?>
                 </div>
-
-                <button type="button" class="bus-showcase-nav next" data-slider-next aria-label="Next company">
-                    <i class="bi bi-chevron-right"></i>
-                </button>
-
-                <div class="bus-showcase-dots" data-slider-dots></div>
-            </div>
-        <?php else: ?>
-            <div class="empty-state-card text-center">
-                <h4 class="mb-2">No approved bus companies yet</h4>
-                <p class="text-muted mb-0">
-                    Once company logos and approved bus operators are available in the database, they will appear here automatically.
-                </p>
-            </div>
-        <?php endif; ?>
-    </div>
-</section>
-
-<section class="py-5">
-    <div class="container">
-        <div class="section-heading text-center mb-5">
-            <span class="section-kicker">Core Features</span>
-            <h2 class="page-title mb-2">Everything needed for booking and operations</h2>
-            <p class="page-subtitle mx-auto">A smoother experience from search to payment verification and QR check-in.</p>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-6 col-xl-3">
-                <div class="power-feature-card">
-                    <div class="power-feature-icon">🚌</div>
-                    <h4>Bus Ticket Search</h4>
-                    <p class="mb-0">Choose route, trip date, company and seat layout with a cleaner customer flow.</p>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-xl-3">
-                <div class="info-card h-100">
-                    <div class="info-card-icon">💳</div>
-                    <h5>Payment Submission</h5>
-                    <p>Upload payment proof and track verification status from your booking history.</p>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-xl-3">
-                <div class="info-card h-100">
-                    <div class="info-card-icon">🎫</div>
-                    <h5>QR / PDF Output</h5>
-                    <p>Generate tickets and vouchers after approval for easier boarding and check-in.</p>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-xl-3">
-                <div class="info-card h-100">
-                    <div class="info-card-icon">📊</div>
-                    <h5>Admin Dashboard</h5>
-                    <p>Monitor approvals, payments, notifications, refunds, and system activity in one place.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="section-split-space py-5">
-    <div class="container">
-        <div class="row g-4 align-items-stretch">
-            <div class="col-lg-6">
-                <div class="photo-feature-card">
-                    <img src="<?php echo BASE_URL; ?>assets/images/bus.png" alt="Bus travel in Myanmar">
-                    <div class="photo-overlay">
-                        <div class="photo-overlay-content">
-                            <span class="photo-badge">Premium Bus Routes</span>
-                            <h3>Travel comfortably across Myanmar</h3>
-                            <p>
-                                Search routes, compare schedules, choose seats and complete booking in a cleaner, faster way.
-                            </p>
-                            <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn btn-brand">Book a Bus</a>
-                        </div>
+            <?php else: ?>
+                <div class="home-empty-state">
+                    <span><i class="bi bi-building-check"></i></span>
+                    <div>
+                        <h4>Partner companies will appear here</h4>
+                        <p>Approved bus operators are displayed automatically when company data is available.</p>
                     </div>
                 </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <section class="home-section home-how-section">
+        <div class="container">
+            <div class="home-section-head text-center">
+                <span class="home-section-label">Simple booking flow</span>
+                <h2>From search to boarding in four steps</h2>
+                <p>A clear process designed to make every booking easier to complete and manage.</p>
             </div>
 
-            <div class="col-lg-6">
-                <div class="photo-feature-card">
-                    <img src="<?php echo BASE_URL; ?>assets/images/tour.png" alt="Myanmar tour destination">
-                    <div class="photo-overlay">
-                        <div class="photo-overlay-content">
-                            <span class="photo-badge">Beautiful Tour Destinations</span>
-                            <h3>Discover tours, events and local experiences</h3>
-                            <p>
-                                Highlight famous places, seasonal packages and guided travel experiences for tourists and families.
-                            </p>
-                            <a href="<?php echo BASE_URL; ?>tours.php" class="btn btn-brand">View Tours</a>
+            <div class="home-step-grid">
+                <article class="home-step-card">
+                    <span class="home-step-number">01</span>
+                    <div class="home-step-icon"><i class="bi bi-search"></i></div>
+                    <h3>Search</h3>
+                    <p>Choose departure, destination, date and preferred bus type.</p>
+                </article>
+                <article class="home-step-card">
+                    <span class="home-step-number">02</span>
+                    <div class="home-step-icon"><i class="bi bi-grid-3x3-gap"></i></div>
+                    <h3>Select</h3>
+                    <p>Compare trips and choose the seat that works best for you.</p>
+                </article>
+                <article class="home-step-card">
+                    <span class="home-step-number">03</span>
+                    <div class="home-step-icon"><i class="bi bi-credit-card"></i></div>
+                    <h3>Pay</h3>
+                    <p>Submit payment proof and follow the verification status online.</p>
+                </article>
+                <article class="home-step-card">
+                    <span class="home-step-number">04</span>
+                    <div class="home-step-icon"><i class="bi bi-qr-code"></i></div>
+                    <h3>Travel</h3>
+                    <p>Download your QR ticket or voucher and enjoy the journey.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-final-section">
+        <div class="container">
+            <div class="home-final-card">
+                <div class="home-final-pattern"></div>
+                <div class="row align-items-center g-4 position-relative">
+                    <div class="col-lg-8">
+                        <span>Ready for your next trip?</span>
+                        <h2>Search, book and travel with less effort.</h2>
+                        <p>Join Golden Route Myanmar and keep all your journeys in one convenient place.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="home-final-actions">
+                            <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn home-light-btn">Find a bus <i class="bi bi-arrow-right"></i></a>
+                            <?php if (!is_logged_in()): ?>
+                                <a href="<?php echo BASE_URL; ?>register.php" class="btn home-outline-light-btn">Create account</a>
+                            <?php else: ?>
+                                <a href="<?php echo BASE_URL; ?>customer/bookings.php" class="btn home-outline-light-btn">My bookings</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
+</main>
 
-<section class="pb-5">
-    <div class="container">
-        <div class="cta-banner">
-            <div class="row align-items-center g-4">
-                <div class="col-lg-8">
-                    <span class="section-kicker">Ready to start?</span>
-                    <h3 class="mb-2">Search available trips or browse curated tour packages</h3>
-                    <p class="mb-0 text-muted">Use the platform as a customer, or manage the system with admin dashboards.</p>
-                </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var swapButton = document.querySelector('[data-home-swap]');
+    var fromInput = document.querySelector('#quick-booking input[name="from"]');
+    var toInput = document.querySelector('#quick-booking input[name="to"]');
 
-                <div class="col-lg-4 text-lg-end">
-                    <a href="<?php echo BASE_URL; ?>search_bus.php" class="btn btn-brand me-2">Search Bus</a>
-                    <a href="<?php echo BASE_URL; ?>tours.php" class="btn btn-nav-soft">Tours</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+    if (swapButton && fromInput && toInput) {
+        swapButton.addEventListener('click', function () {
+            var fromValue = fromInput.value;
+            fromInput.value = toInput.value;
+            toInput.value = fromValue;
+            swapButton.classList.add('is-swapping');
+            window.setTimeout(function () {
+                swapButton.classList.remove('is-swapping');
+            }, 280);
+        });
+    }
+});
+</script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php
+$hide_footer_cta = true;
+require_once __DIR__ . '/includes/footer.php';
+?>

@@ -12,6 +12,122 @@ ensure_events_table_exists($conn);
 
 $user = current_user();
 
+if (empty($_SESSION['promotion_admin_csrf'])) {
+    $_SESSION['promotion_admin_csrf'] = bin2hex(random_bytes(24));
+}
+$promotionAdminCsrf = (string)$_SESSION['promotion_admin_csrf'];
+
+try {
+    $conn->query("CREATE TABLE IF NOT EXISTS promotions (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(150) NOT NULL,
+        promo_code VARCHAR(50) NULL,
+        description TEXT NULL,
+        discount_type ENUM('percentage','fixed') NOT NULL DEFAULT 'percentage',
+        discount_value DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        starts_at DATETIME NULL,
+        ends_at DATETIME NULL,
+        status ENUM('active','inactive','expired') NOT NULL DEFAULT 'active',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_promotions_promo_code (promo_code),
+        KEY idx_promotions_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+} catch (Throwable $e) {
+    // Dashboard remains available when the optional promotion module cannot initialize.
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['promotion_action'])) {
+    try {
+        $postedToken = (string)($_POST['promotion_csrf'] ?? '');
+        if ($postedToken === '' || !hash_equals($promotionAdminCsrf, $postedToken)) {
+            throw new Exception('Promotion form session expired. Please refresh and try again.');
+        }
+
+        $promotionAction = trim((string)$_POST['promotion_action']);
+        if ($promotionAction === 'create') {
+            $promotionTitle = trim((string)($_POST['promotion_title'] ?? ''));
+            $promotionCode = strtoupper(trim((string)($_POST['promotion_code'] ?? '')));
+            $promotionDescription = trim((string)($_POST['promotion_description'] ?? ''));
+            $discountType = trim((string)($_POST['discount_type'] ?? 'percentage'));
+            $discountValue = trim((string)($_POST['discount_value'] ?? ''));
+            $startsAtInput = trim((string)($_POST['starts_at'] ?? ''));
+            $endsAtInput = trim((string)($_POST['ends_at'] ?? ''));
+            $promotionStatus = trim((string)($_POST['promotion_status'] ?? 'active'));
+
+            if ($promotionTitle === '' || strlen($promotionTitle) > 150) {
+                throw new Exception('Promotion title is required and must be 150 characters or fewer.');
+            }
+            if ($promotionCode !== '' && (strlen($promotionCode) > 50 || preg_match('/^[A-Z0-9_-]+$/', $promotionCode) !== 1)) {
+                throw new Exception('Promotion code may contain only letters, numbers, hyphens and underscores.');
+            }
+            if (!in_array($discountType, ['percentage', 'fixed'], true)) {
+                throw new Exception('Invalid discount type.');
+            }
+            if ($discountValue === '' || !is_numeric($discountValue) || (float)$discountValue <= 0) {
+                throw new Exception('Discount value must be greater than zero.');
+            }
+            if ($discountType === 'percentage' && (float)$discountValue > 100) {
+                throw new Exception('Percentage discount cannot be greater than 100%.');
+            }
+            if (!in_array($promotionStatus, ['active', 'inactive'], true)) {
+                throw new Exception('Invalid promotion status.');
+            }
+
+            $normalizeDateTime = static function (string $value): ?string {
+                if ($value === '') return null;
+                $value = str_replace('T', ' ', $value);
+                $date = DateTime::createFromFormat('Y-m-d H:i', $value);
+                if (!$date || $date->format('Y-m-d H:i') !== $value) {
+                    throw new Exception('Promotion start/end date format is invalid.');
+                }
+                return $date->format('Y-m-d H:i:s');
+            };
+            $startsAt = $normalizeDateTime($startsAtInput);
+            $endsAt = $normalizeDateTime($endsAtInput);
+            if ($startsAt !== null && $endsAt !== null && strtotime($endsAt) <= strtotime($startsAt)) {
+                throw new Exception('Promotion end time must be later than its start time.');
+            }
+
+            $stmt = $conn->prepare("INSERT INTO promotions (title, promo_code, description, discount_type, discount_value, starts_at, ends_at, status) VALUES (?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, ?)");
+            if (!$stmt) throw new Exception('Could not prepare promotion insert.');
+            $discountValueFloat = (float)$discountValue;
+            $stmt->bind_param('ssssdsss', $promotionTitle, $promotionCode, $promotionDescription, $discountType, $discountValueFloat, $startsAt, $endsAt, $promotionStatus);
+            if (!$stmt->execute()) {
+                $message = $stmt->errno === 1062 ? 'That promotion code already exists.' : 'Could not create the promotion.';
+                $stmt->close();
+                throw new Exception($message);
+            }
+            $stmt->close();
+            set_flash('success', 'Promotion created and published to the public Events & Promotions page.');
+        } elseif ($promotionAction === 'toggle') {
+            $promotionId = (int)($_POST['promotion_id'] ?? 0);
+            if ($promotionId <= 0) throw new Exception('Invalid promotion selected.');
+            $stmt = $conn->prepare("UPDATE promotions SET status = CASE WHEN status = 'active' THEN 'inactive' ELSE 'active' END WHERE id = ?");
+            if (!$stmt) throw new Exception('Could not prepare promotion status update.');
+            $stmt->bind_param('i', $promotionId);
+            $stmt->execute();
+            $stmt->close();
+            set_flash('success', 'Promotion status updated.');
+        } elseif ($promotionAction === 'delete') {
+            $promotionId = (int)($_POST['promotion_id'] ?? 0);
+            if ($promotionId <= 0) throw new Exception('Invalid promotion selected.');
+            $stmt = $conn->prepare("DELETE FROM promotions WHERE id = ?");
+            if (!$stmt) throw new Exception('Could not prepare promotion deletion.');
+            $stmt->bind_param('i', $promotionId);
+            $stmt->execute();
+            $stmt->close();
+            set_flash('success', 'Promotion deleted.');
+        } else {
+            throw new Exception('Invalid promotion action.');
+        }
+    } catch (Throwable $e) {
+        set_flash('error', $e->getMessage());
+    }
+
+    redirect('admin/dashboard.php#promotion-manager');
+}
+
 $summary = [
     'total_companies' => 0,
     'pending_count' => 0,
@@ -93,6 +209,49 @@ try {
 $eventSummary = get_event_dashboard_summary($conn);
 $recentEvents = get_recent_events($conn, 4);
 
+$promotionSummary = [
+    'total_promotions' => 0,
+    'active_now' => 0,
+    'upcoming' => 0,
+    'inactive_or_expired' => 0,
+];
+$recentPromotions = [];
+
+try {
+    $promotionTableResult = $conn->query("SHOW TABLES LIKE 'promotions'");
+    if ($promotionTableResult instanceof mysqli_result && $promotionTableResult->num_rows > 0) {
+        $promotionSummaryResult = $conn->query("
+            SELECT
+                COUNT(*) AS total_promotions,
+                COALESCE(SUM(status = 'active' AND (starts_at IS NULL OR starts_at <= NOW()) AND (ends_at IS NULL OR ends_at >= NOW())), 0) AS active_now,
+                COALESCE(SUM(status = 'active' AND starts_at IS NOT NULL AND starts_at > NOW()), 0) AS upcoming,
+                COALESCE(SUM(status <> 'active' OR (ends_at IS NOT NULL AND ends_at < NOW())), 0) AS inactive_or_expired
+            FROM promotions
+        " );
+        if ($promotionSummaryResult) {
+            $promotionSummary = array_merge($promotionSummary, $promotionSummaryResult->fetch_assoc() ?: []);
+            $promotionSummaryResult->free();
+        }
+
+        $promotionResult = $conn->query("
+            SELECT id, title, promo_code, discount_type, discount_value, starts_at, ends_at, status
+            FROM promotions
+            ORDER BY
+                CASE WHEN status = 'active' AND (starts_at IS NULL OR starts_at <= NOW()) AND (ends_at IS NULL OR ends_at >= NOW()) THEN 1 ELSE 2 END,
+                id DESC
+            LIMIT 4
+        " );
+        if ($promotionResult) {
+            while ($promotion = $promotionResult->fetch_assoc()) {
+                $recentPromotions[] = $promotion;
+            }
+            $promotionResult->free();
+        }
+    }
+} catch (Throwable $e) {
+    // Promotion widgets remain at zero when the optional table is unavailable.
+}
+
 $recentCompanies = [];
 $recentPayments = [];
 
@@ -163,6 +322,10 @@ function adminStatusBadgeClass(string $status): string
 }
 ?>
 
+<style>
+.admin-command-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:1.5rem}.admin-command-card{display:flex;align-items:center;gap:13px;padding:17px 18px;border:1px solid #e8ecf2;border-radius:18px;background:#fff;box-shadow:0 10px 30px rgba(27,38,59,.055);text-decoration:none;color:#263247;transition:.2s ease}.admin-command-card:hover{transform:translateY(-3px);color:#151f33;box-shadow:0 16px 35px rgba(27,38,59,.1)}.admin-command-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#fff5d6;color:#b87800;font-size:1.2rem}.admin-command-card strong{display:block}.admin-command-card small{color:#7b8495}.dashboard-promo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.dashboard-promo-card{border:1px solid #e9edf3;border-radius:20px;padding:18px;background:linear-gradient(180deg,#fff,#fbfcff);height:100%}.dashboard-promo-code{display:inline-flex;padding:6px 10px;border-radius:9px;background:#fff4cf;color:#785000;font-weight:900;letter-spacing:.08em}.dashboard-promo-value{font-size:1.55rem;font-weight:900;color:#b87800}.admin-dashboard-note{border-radius:18px;background:linear-gradient(135deg,#172033,#31415e);color:#fff;padding:18px 20px}.admin-dashboard-note a{color:#ffd269;font-weight:800}.promotion-manager-form{border:1px solid #e8ecf2;border-radius:20px;padding:20px;background:#fbfcfe;margin-bottom:20px}.promotion-manager-form .form-control,.promotion-manager-form .form-select{min-height:45px;border-radius:12px}.promotion-card-actions{display:flex;gap:7px;margin-top:14px}.promotion-card-actions form{flex:1}.promotion-card-actions .btn{width:100%;border-radius:10px}@media(max-width:991.98px){.admin-command-strip,.dashboard-promo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:575.98px){.admin-command-strip,.dashboard-promo-grid{grid-template-columns:1fr}}
+</style>
+
 <div class="container py-5">
     <?php if ($success = get_flash('success')): ?>
         <div class="alert alert-success"><?php echo e($success); ?></div>
@@ -194,6 +357,14 @@ function adminStatusBadgeClass(string $status): string
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="admin-command-strip">
+        <a href="<?php echo BASE_URL; ?>admin/companies.php" class="admin-command-card"><span class="admin-command-icon"><i class="bi bi-buildings"></i></span><span><strong>Companies</strong><small>Review and approve partners</small></span></a>
+        <a href="<?php echo BASE_URL; ?>admin/partner_applications.php" class="admin-command-card"><span class="admin-command-icon"><i class="bi bi-inboxes"></i></span><span><strong>Partner Requests</strong><small>Review public applications</small></span></a>
+        <a href="<?php echo BASE_URL; ?>admin/schedules.php" class="admin-command-card"><span class="admin-command-icon"><i class="bi bi-calendar2-week"></i></span><span><strong>Schedules</strong><small>Create templates and trips</small></span></a>
+        <a href="<?php echo BASE_URL; ?>admin/payments.php" class="admin-command-card"><span class="admin-command-icon"><i class="bi bi-wallet2"></i></span><span><strong>Payments</strong><small><?php echo e($summary['pending_payment_reviews']); ?> waiting for review</small></span></a>
+        <a href="<?php echo BASE_URL; ?>events.php" class="admin-command-card"><span class="admin-command-icon"><i class="bi bi-percent"></i></span><span><strong>Public promotions</strong><small><?php echo e($promotionSummary['active_now']); ?> active now</small></span></a>
     </div>
 
     <div class="row g-4 mb-4">
@@ -443,6 +614,70 @@ function adminStatusBadgeClass(string $status): string
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="panel-card mb-4">
+        <div class="panel-card-header quick-links-header">
+            <div>
+                <h4>Live Promotion Codes</h4>
+                <p>These figures come from the promotions table and respect start and expiry times.</p>
+            </div>
+            <a href="<?php echo BASE_URL; ?>events.php#promo-checker" class="btn btn-brand btn-sm">Open Public Promotions</a>
+        </div>
+
+        <div class="promotion-manager-form" id="promotion-manager">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                <div><h5 class="mb-1">Create a real promotion</h5><p class="text-muted small mb-0">Saved records immediately appear on the public promotions page when active and within the valid date range.</p></div>
+                <i class="bi bi-ticket-perforated fs-2 text-warning"></i>
+            </div>
+            <form method="POST" action="<?php echo BASE_URL; ?>admin/dashboard.php#promotion-manager" class="row g-3">
+                <input type="hidden" name="promotion_action" value="create">
+                <input type="hidden" name="promotion_csrf" value="<?php echo e($promotionAdminCsrf); ?>">
+                <div class="col-md-6"><label class="form-label small fw-semibold">Promotion title</label><input type="text" name="promotion_title" class="form-control" maxlength="150" placeholder="Summer Travel Deal" required></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Promo code</label><input type="text" name="promotion_code" class="form-control text-uppercase" maxlength="50" placeholder="SUMMER20"></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Status</label><select name="promotion_status" class="form-select"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Discount type</label><select name="discount_type" class="form-select"><option value="percentage">Percentage</option><option value="fixed">Fixed MMK</option></select></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Discount value</label><input type="number" name="discount_value" class="form-control" min="0.01" step="0.01" required></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Starts at</label><input type="datetime-local" name="starts_at" class="form-control"></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Ends at</label><input type="datetime-local" name="ends_at" class="form-control"></div>
+                <div class="col-md-9"><label class="form-label small fw-semibold">Description</label><input type="text" name="promotion_description" class="form-control" maxlength="500" placeholder="Explain where or when customers can use this offer."></div>
+                <div class="col-md-3 d-flex align-items-end"><button type="submit" class="btn btn-brand w-100">Create Promotion</button></div>
+            </form>
+        </div>
+
+        <div class="event-stat-grid mb-4">
+            <div class="event-stat-card"><span>Total Promotions</span><strong><?php echo e($promotionSummary['total_promotions']); ?></strong></div>
+            <div class="event-stat-card"><span>Active Now</span><strong><?php echo e($promotionSummary['active_now']); ?></strong></div>
+            <div class="event-stat-card"><span>Upcoming</span><strong><?php echo e($promotionSummary['upcoming']); ?></strong></div>
+            <div class="event-stat-card"><span>Inactive / Expired</span><strong><?php echo e($promotionSummary['inactive_or_expired']); ?></strong></div>
+        </div>
+
+        <?php if (empty($recentPromotions)): ?>
+            <div class="admin-dashboard-note"><strong>No promotion records found.</strong> The public checker will stay empty until active records are added to the <code class="text-warning">promotions</code> table.</div>
+        <?php else: ?>
+            <div class="dashboard-promo-grid">
+                <?php foreach ($recentPromotions as $promotion): ?>
+                    <?php
+                    $promotionIsActive = ($promotion['status'] ?? '') === 'active'
+                        && (empty($promotion['starts_at']) || strtotime((string)$promotion['starts_at']) <= time())
+                        && (empty($promotion['ends_at']) || strtotime((string)$promotion['ends_at']) >= time());
+                    $discountText = ($promotion['discount_type'] ?? '') === 'fixed'
+                        ? number_format((float)$promotion['discount_value'], 0) . ' MMK OFF'
+                        : rtrim(rtrim(number_format((float)$promotion['discount_value'], 2), '0'), '.') . '% OFF';
+                    ?>
+                    <div class="dashboard-promo-card">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-3"><span class="badge bg-<?php echo $promotionIsActive ? 'success' : 'secondary'; ?>"><?php echo $promotionIsActive ? 'Active' : e(ucfirst((string)$promotion['status'])); ?></span><span class="dashboard-promo-value"><?php echo e($discountText); ?></span></div>
+                        <h5 class="mb-2"><?php echo e($promotion['title']); ?></h5>
+                        <?php if (!empty($promotion['promo_code'])): ?><span class="dashboard-promo-code"><?php echo e($promotion['promo_code']); ?></span><?php else: ?><span class="text-muted small">Automatic offer</span><?php endif; ?>
+                        <div class="text-muted small mt-3">Ends: <?php echo !empty($promotion['ends_at']) ? e(date('M d, Y', strtotime((string)$promotion['ends_at']))) : 'No expiry'; ?></div>
+                        <div class="promotion-card-actions">
+                            <form method="POST" action="<?php echo BASE_URL; ?>admin/dashboard.php#promotion-manager"><input type="hidden" name="promotion_csrf" value="<?php echo e($promotionAdminCsrf); ?>"><input type="hidden" name="promotion_action" value="toggle"><input type="hidden" name="promotion_id" value="<?php echo (int)$promotion['id']; ?>"><button type="submit" class="btn btn-sm btn-outline-dark"><?php echo ($promotion['status'] ?? '') === 'active' ? 'Deactivate' : 'Activate'; ?></button></form>
+                            <form method="POST" action="<?php echo BASE_URL; ?>admin/dashboard.php#promotion-manager" onsubmit="return confirm('Delete this promotion?');"><input type="hidden" name="promotion_csrf" value="<?php echo e($promotionAdminCsrf); ?>"><input type="hidden" name="promotion_action" value="delete"><input type="hidden" name="promotion_id" value="<?php echo (int)$promotion['id']; ?>"><button type="submit" class="btn btn-sm btn-outline-danger">Delete</button></form>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="panel-card mb-4">
